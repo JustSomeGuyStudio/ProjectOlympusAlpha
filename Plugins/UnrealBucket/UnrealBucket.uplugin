@@ -1,0 +1,44 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.2.9",
+	"FriendlyName": "Unreal Bucket",
+	"Description": "Unreal Bucket is a standardized, high quality asset library created specifically for Unreal Engine. It's a plugin that smoothly integrates with the editor, allowing users to add content directly to any project with just one click.",
+	"Category": "Unreal Bucket",
+	"CreatedBy": "Unreal Bucket",
+	"CreatedByURL": "https://unrealbucket.com/",
+	"DocsURL": "",
+	"MarketplaceURL": "https://publish.unrealengine.com/v3/edit-product/3ce48046720d4a66b4f804b0d135a820",
+	"SupportURL": "mailto:contact@unrealbucket.com",
+	"EngineVersion": "5.3.0",
+	"CanContainContent": true,
+	"Installed": true,
+	"Modules": [
+		{
+			"Name": "UnrealBucket",
+			"Type": "EditorNoCommandlet",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "WindowsFileUtility",
+			"Type": "EditorNoCommandlet",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "ZipUtility",
+			"Type": "EditorNoCommandlet",
+			"LoadingPhase": "PostEngineInit",
+			"PlatformAllowList": [
+				"Win64"
+			]
+		}
+	],
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false
+}
