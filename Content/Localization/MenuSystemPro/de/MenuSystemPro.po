@@ -1,0 +1,1254 @@
+﻿# Game German translation.
+# Copyright 1998-2018 Epic Games, Inc. All Rights Reserved.
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: Game\n"
+"POT-Creation-Date: 2018-09-01 16:06\n"
+"PO-Revision-Date: 2018-09-01 16:06\n"
+"Language-Team: \n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Key:	0204F9BB4FBE12995C9E1787111BD257
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.DisplayButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.DisplayButton.Text
+msgctxt ",0204F9BB4FBE12995C9E1787111BD257"
+msgid "Display"
+msgstr ""
+
+#. Key:	031F660F43EF95EB5C6B7E9FDE54D4A7
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",031F660F43EF95EB5C6B7E9FDE54D4A7"
+msgid "Medium"
+msgstr ""
+
+#. Key:	04770C49495355B33F503B8CEA402463
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionName
+msgctxt ",04770C49495355B33F503B8CEA402463"
+msgid "Quality Preset"
+msgstr ""
+
+#. Key:	056E8A224A3B3AAB2B247EB4419F1A9B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",056E8A224A3B3AAB2B247EB4419F1A9B"
+msgid "Medium"
+msgstr ""
+
+#. Key:	064E4818430317A0225F769D79DEC143
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",064E4818430317A0225F769D79DEC143"
+msgid "Hard"
+msgstr ""
+
+#. Key:	07030E3E4BB1964ED7BE2A9EF9E7E918
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionDescription
+msgctxt ",07030E3E4BB1964ED7BE2A9EF9E7E918"
+msgid "Select the difficulty for the game."
+msgstr ""
+
+#. Key:	07C1A97949176426BDBA67845B4BC481
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",07C1A97949176426BDBA67845B4BC481"
+msgid "On"
+msgstr ""
+
+#. Key:	0AAE3CC247D07335630BB28F0FC369DD
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",0AAE3CC247D07335630BB28F0FC369DD"
+msgid "High"
+msgstr ""
+
+#. Key:	0B96BF634DF11E61EF4A97B2C3D68004
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",0B96BF634DF11E61EF4A97B2C3D68004"
+msgid "Off"
+msgstr ""
+
+#. Key:	0BC9A9AB44CEE785FDDAE990C8D7B4B9
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",0BC9A9AB44CEE785FDDAE990C8D7B4B9"
+msgid "High"
+msgstr ""
+
+#. Key:	0DDDB886465E8E8B49580C8A5FD70BBE
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+msgctxt ",0DDDB886465E8E8B49580C8A5FD70BBE"
+msgid "Text"
+msgstr ""
+
+#. Key:	11F5D78B4481C9F0521C86AEB3B400AB
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.BackButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.BackButton.Text
+msgctxt ",11F5D78B4481C9F0521C86AEB3B400AB"
+msgid "BACK"
+msgstr ""
+
+#. Key:	1208ACE645127F9C4CC6E99B03388FD2
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionDescription
+msgctxt ",1208ACE645127F9C4CC6E99B03388FD2"
+msgid "Adjust the quality of visual effects like reflections and the material fidelity."
+msgstr ""
+
+#. Key:	1BAEB78B4E55BD74142DEB957549D7A9
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionName
+msgctxt ",1BAEB78B4E55BD74142DEB957549D7A9"
+msgid "Shadows"
+msgstr ""
+
+#. Key:	1E75C816422ABE816F5059BE98B8257E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",1E75C816422ABE816F5059BE98B8257E"
+msgid "Low"
+msgstr ""
+
+#. Key:	1F7029B64E85A01D03B52190CBD6928A
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",1F7029B64E85A01D03B52190CBD6928A"
+msgid "Near"
+msgstr ""
+
+#. Key:	1FA7CED0443B2C00F337C7AF27C43DE3
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",1FA7CED0443B2C00F337C7AF27C43DE3"
+msgid "On"
+msgstr ""
+
+#. Key:	1FBF3E21469C82113DBC8B9A6952EA42
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",1FBF3E21469C82113DBC8B9A6952EA42"
+msgid "Medium"
+msgstr ""
+
+#. Key:	201BE860438D5A707DEBF38A96B5B960
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.TextBlock_0.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.TextBlock_0.Text
+msgctxt ",201BE860438D5A707DEBF38A96B5B960"
+msgid "Options"
+msgstr ""
+
+#. Key:	205D79CD429123B0A872CFB8D09B68DB
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+msgctxt ",205D79CD429123B0A872CFB8D09B68DB"
+msgid "Text"
+msgstr ""
+
+#. Key:	2228DD7A4F90514915C058AF1CF29E57
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.DisplayResolutionOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.DisplayResolutionOptionsPicker.OptionName
+msgctxt ",2228DD7A4F90514915C058AF1CF29E57"
+msgid "Display Resolution"
+msgstr ""
+
+#. Key:	22718402415543A60FB3BC87D462A7E0
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.ApplyButton.Text
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.ApplyButton.Text
+msgctxt ",22718402415543A60FB3BC87D462A7E0"
+msgid "APPLY"
+msgstr ""
+
+#. Key:	22CE7AD84BACF495B9C4118FFA70DF4F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",22CE7AD84BACF495B9C4118FFA70DF4F"
+msgid "Far"
+msgstr ""
+
+#. Key:	26B740FE42372044C6774086C29D6970
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",26B740FE42372044C6774086C29D6970"
+msgid "On"
+msgstr ""
+
+#. Key:	2881BB5A4D8E5BE96B1209A73D65892A
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsPicker.Default__OptionsPicker_C.OptionName
+#: /Game/Blueprints/UI/Styles/OptionsPicker.Default__OptionsPicker_C.OptionName
+msgctxt ",2881BB5A4D8E5BE96B1209A73D65892A"
+msgid "Text"
+msgstr ""
+
+#. Key:	29470331488F55CE443584A2488834A8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",29470331488F55CE443584A2488834A8"
+msgid "On"
+msgstr ""
+
+#. Key:	2BECA1CF497C85E9B09ED5AE204913B7
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",2BECA1CF497C85E9B09ED5AE204913B7"
+msgid "High"
+msgstr ""
+
+#. Key:	37AEE2474C033066CC974B81589CE2A8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",37AEE2474C033066CC974B81589CE2A8"
+msgid "On"
+msgstr ""
+
+#. Key:	37BE0FD14034F81F0C2B2AAAAF2729B6
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",37BE0FD14034F81F0C2B2AAAAF2729B6"
+msgid "Expert"
+msgstr ""
+
+#. Key:	38C1494042CC5B041798A1B36F5428E8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",38C1494042CC5B041798A1B36F5428E8"
+msgid "Off"
+msgstr ""
+
+#. Key:	38CA8FA1466E70549D6BAE97212A7B24
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",38CA8FA1466E70549D6BAE97212A7B24"
+msgid "Low"
+msgstr ""
+
+#. Key:	3B15E700402219368908BFBDA652E81C
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",3B15E700402219368908BFBDA652E81C"
+msgid "Medium"
+msgstr ""
+
+#. Key:	3BB7991A43FDBF2EB324F49057DAC52E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ResolutionScaleOptionsSlider.OptionName
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ResolutionScaleOptionsSlider.OptionName
+msgctxt ",3BB7991A43FDBF2EB324F49057DAC52E"
+msgid "Resolution Scale"
+msgstr ""
+
+#. Key:	3C7C40A541F5CD1C96200794C4284B62
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionName
+msgctxt ",3C7C40A541F5CD1C96200794C4284B62"
+msgid "Difficulty"
+msgstr ""
+
+#. Key:	3CD22C80439325CD2CF83BB8CE9FEFA6
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",3CD22C80439325CD2CF83BB8CE9FEFA6"
+msgid "Epic"
+msgstr ""
+
+#. Key:	3DF4E0924B71FF52CAA93A9A25FE4C8C
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",3DF4E0924B71FF52CAA93A9A25FE4C8C"
+msgid "Off"
+msgstr ""
+
+#. Key:	41CB017A4E02F60F5626D2820B7D18A1
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",41CB017A4E02F60F5626D2820B7D18A1"
+msgid "On"
+msgstr ""
+
+#. Key:	43A4DAB847DF0BDAFF7228BD8331FE37
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",43A4DAB847DF0BDAFF7228BD8331FE37"
+msgid "Easy"
+msgstr ""
+
+#. Key:	4508F3FF43DBE528C03541B829FD0607
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",4508F3FF43DBE528C03541B829FD0607"
+msgid "Low"
+msgstr ""
+
+#. Key:	4881AF094498B8A5D8D5108C137D2D33
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+msgctxt ",4881AF094498B8A5D8D5108C137D2D33"
+msgid "Text"
+msgstr ""
+
+#. Key:	48EC1C4A479C13EF012B269F0058E207
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsPicker.Default__OptionsPicker_C.OptionDescription
+#: /Game/Blueprints/UI/Styles/OptionsPicker.Default__OptionsPicker_C.OptionDescription
+msgctxt ",48EC1C4A479C13EF012B269F0058E207"
+msgid "Text"
+msgstr ""
+
+#. Key:	491B198541979EE21B671FA542185B07
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MusicOptionsSlider.OptionDescription
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MusicOptionsSlider.OptionDescription
+msgctxt ",491B198541979EE21B671FA542185B07"
+msgid "Adjust the Music Volume."
+msgstr ""
+
+#. Key:	4A1F0EB34F5A9C05194DC5B6AC1286CA
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",4A1F0EB34F5A9C05194DC5B6AC1286CA"
+msgid "Low"
+msgstr ""
+
+#. Key:	4C7E5BE1414E4D452BCC82A03FCA5161
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.GraphicsButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.GraphicsButton.Text
+msgctxt ",4C7E5BE1414E4D452BCC82A03FCA5161"
+msgid "Graphics"
+msgstr ""
+
+#. Key:	4EA04F444A9E8BD254798B98611B26B6
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",4EA04F444A9E8BD254798B98611B26B6"
+msgid "Medium"
+msgstr ""
+
+#. Key:	4FF704DF41146D0E3FFC86B926921B8F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SFXOptionsSlider.OptionName
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SFXOptionsSlider.OptionName
+msgctxt ",4FF704DF41146D0E3FFC86B926921B8F"
+msgid "Music Volume"
+msgstr ""
+
+#. Key:	554764944D80F603B74FE4BD23C5F02F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+msgctxt ",554764944D80F603B74FE4BD23C5F02F"
+msgid "Text"
+msgstr ""
+
+#. Key:	575928684C38527652E68B8C776F0B9D
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionName
+msgctxt ",575928684C38527652E68B8C776F0B9D"
+msgid "Bloom"
+msgstr ""
+
+#. Key:	599D094E4A64047FE9690DA70507A6AE
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",599D094E4A64047FE9690DA70507A6AE"
+msgid "High"
+msgstr ""
+
+#. Key:	5B43A2064C0586FD44006CB9BDFA25F1
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.QuitButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.QuitButton.Text
+msgctxt ",5B43A2064C0586FD44006CB9BDFA25F1"
+msgid "Quit"
+msgstr ""
+
+#. Key:	5C59AF024776C16D92C6E69C8A3D32A3
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.BackToPauseMenuButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.BackToPauseMenuButton.Text
+msgctxt ",5C59AF024776C16D92C6E69C8A3D32A3"
+msgid "Back"
+msgstr ""
+
+#. Key:	5CAC97904AF492DEFD9E1FBC92F05ACD
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionName
+msgctxt ",5CAC97904AF492DEFD9E1FBC92F05ACD"
+msgid "VSync"
+msgstr ""
+
+#. Key:	5D61348745303859B3D6369A3D86A9B8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionDescription
+msgctxt ",5D61348745303859B3D6369A3D86A9B8"
+msgid "During gameplay edges may appear jagged, anti aliasing attempts\r\nto smooth them in order to prevent this effect."
+msgstr ""
+
+#. Key:	5FB5E8434571BD396B35729E7F8B10F8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionDescription
+msgctxt ",5FB5E8434571BD396B35729E7F8B10F8"
+msgid "Enable lens flares."
+msgstr ""
+
+#. Key:	6418284B466D2CEEE1C8F0AA552D3761
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.OptionsButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.OptionsButton.Text
+msgctxt ",6418284B466D2CEEE1C8F0AA552D3761"
+msgid "Options"
+msgstr ""
+
+#. Key:	6656360A4922C0DAE11CBA88BC6FC353
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionName
+msgctxt ",6656360A4922C0DAE11CBA88BC6FC353"
+msgid "Post Processing"
+msgstr ""
+
+#. Key:	6744D58A4427E72E66AB608C5A7E87C8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.AudioButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.AudioButton.Text
+msgctxt ",6744D58A4427E72E66AB608C5A7E87C8"
+msgid "Audio"
+msgstr ""
+
+#. Key:	6756BAA24F922CE26509DBA1F822C352
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionName
+msgctxt ",6756BAA24F922CE26509DBA1F822C352"
+msgid "Lock FPS"
+msgstr ""
+
+#. Key:	678BCA1D434DCC85BAA46A9AE57BC5D2
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsSlider.OptionsSlider_C:WidgetTree.OptionNameText.Text
+#: /Game/Blueprints/UI/Styles/OptionsSlider.OptionsSlider_C:WidgetTree.OptionNameText.Text
+msgctxt ",678BCA1D434DCC85BAA46A9AE57BC5D2"
+msgid "Text"
+msgstr ""
+
+#. Key:	69785D2040C918B99394CEAB874599D4
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionDescription
+msgctxt ",69785D2040C918B99394CEAB874599D4"
+msgid "Locks the frames per second (FPS) to a fixed value. \r\nIt's advised to lock the FPS, if the frame rate is highly variable \r\nor exceeds your monitors refresh rate."
+msgstr ""
+
+#. Key:	6A38AA5042F82EF6AF5F43924B227FFB
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionName
+msgctxt ",6A38AA5042F82EF6AF5F43924B227FFB"
+msgid "SSR"
+msgstr ""
+
+#. Key:	6A5443254D1A1099EF20D7AB03349A0B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.DifficultyOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",6A5443254D1A1099EF20D7AB03349A0B"
+msgid "Medium"
+msgstr ""
+
+#. Key:	6AB2A37C4538C5E1CF83639C91598245
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",6AB2A37C4538C5E1CF83639C91598245"
+msgid "High"
+msgstr ""
+
+#. Key:	6D1B38F447F05DDD064C1784564E5BEB
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionName
+msgctxt ",6D1B38F447F05DDD064C1784564E5BEB"
+msgid "Foliage"
+msgstr ""
+
+#. Key:	6D69AFB5447B3C278F6D89A364FAA77C
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+msgctxt ",6D69AFB5447B3C278F6D89A364FAA77C"
+msgid "Display"
+msgstr ""
+
+#. Key:	6D9FCA344D8BE4F59EA1ADB85F6F110F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.BackButton.Text
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.BackButton.Text
+msgctxt ",6D9FCA344D8BE4F59EA1ADB85F6F110F"
+msgid "BACK"
+msgstr ""
+
+#. Key:	6E49A9404562E6CDFD090BAC40827960
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsSlider.OptionsSlider_C:WidgetTree.SliderValueText.Text
+#: /Game/Blueprints/UI/Styles/OptionsSlider.OptionsSlider_C:WidgetTree.SliderValueText.Text
+msgctxt ",6E49A9404562E6CDFD090BAC40827960"
+msgid "Text"
+msgstr ""
+
+#. Key:	6F7ACDC741553E9523D182A5C37D29BD
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionDescription
+msgctxt ",6F7ACDC741553E9523D182A5C37D29BD"
+msgid "Enable motion blur on fast moving objects."
+msgstr ""
+
+#. Key:	7197615A48CDEC9E833648A7032AD36B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionName
+msgctxt ",7197615A48CDEC9E833648A7032AD36B"
+msgid "Show FPS counter"
+msgstr ""
+
+#. Key:	728CB7A7497736B9180BF59B769D83B9
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionName
+msgctxt ",728CB7A7497736B9180BF59B769D83B9"
+msgid "Textures"
+msgstr ""
+
+#. Key:	729C31F44BE2808D2999CEAE8603BC74
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionDescription
+msgctxt ",729C31F44BE2808D2999CEAE8603BC74"
+msgid "Choose between AA methods."
+msgstr ""
+
+#. Key:	7339D4B048CA54819D8F4280D98F6167
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionName
+msgctxt ",7339D4B048CA54819D8F4280D98F6167"
+msgid "Anti Aliasing Quality"
+msgstr ""
+
+#. Key:	756B507F4D98A56A4490ED8AF0810F0D
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ResolutionScaleOptionsSlider.OptionDescription
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ResolutionScaleOptionsSlider.OptionDescription
+msgctxt ",756B507F4D98A56A4490ED8AF0810F0D"
+msgid "Set the resolution scaling in percent."
+msgstr ""
+
+#. Key:	77323638441332B941E29CA23F5D4A9C
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionName
+msgctxt ",77323638441332B941E29CA23F5D4A9C"
+msgid "Language"
+msgstr ""
+
+#. Key:	782EB74E43720D558B79F9BB0AA2F3BD
+#. SourceLocation:	/Game/Blueprints/UI/Styles/KeyButton.Default__KeyButton_C.Text
+#: /Game/Blueprints/UI/Styles/KeyButton.Default__KeyButton_C.Text
+msgctxt ",782EB74E43720D558B79F9BB0AA2F3BD"
+msgid "Text"
+msgstr ""
+
+#. Key:	7BF62C174D92DDFC053F039B0393D3EA
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionsArray(2).OptionsArray
+msgctxt ",7BF62C174D92DDFC053F039B0393D3EA"
+msgid "TAA"
+msgstr ""
+
+#. Key:	7E1979624DC2A5A406CA939339ED5024
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",7E1979624DC2A5A406CA939339ED5024"
+msgid "Unlocked"
+msgstr ""
+
+#. Key:	7ECC10FA4B87F223497FF98F2EE1BCEA
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(4).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(4).OptionsArray
+msgctxt ",7ECC10FA4B87F223497FF98F2EE1BCEA"
+msgid "240"
+msgstr ""
+
+#. Key:	808605FD41D0B12057EF898AD5FF577E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.BackButton.Text
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.BackButton.Text
+msgctxt ",808605FD41D0B12057EF898AD5FF577E"
+msgid "BACK"
+msgstr ""
+
+#. Key:	80C7A62E419CEF981CC0C7B453AB8923
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",80C7A62E419CEF981CC0C7B453AB8923"
+msgid "On"
+msgstr ""
+
+#. Key:	8192141E409ECB62FFFD8399BC0B184F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ResetButton.Text
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ResetButton.Text
+msgctxt ",8192141E409ECB62FFFD8399BC0B184F"
+msgid "RESET GRAPHICS SETTINGS"
+msgstr ""
+
+#. Key:	81CA413B4F01F1AE6979CA8B4E835633
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.DisplayButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.DisplayButton.Text
+msgctxt ",81CA413B4F01F1AE6979CA8B4E835633"
+msgid "Display"
+msgstr ""
+
+#. Key:	835202A54FFFC8DD67ED73B5BA66E93A
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",835202A54FFFC8DD67ED73B5BA66E93A"
+msgid "On"
+msgstr ""
+
+#. Key:	881623524A61576BCE0CB7A3C536B7EC
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.GraphicsButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.GraphicsButton.Text
+msgctxt ",881623524A61576BCE0CB7A3C536B7EC"
+msgid "Graphics"
+msgstr ""
+
+#. Key:	88CB769A43B7304921BBB5BBD1163403
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsSlider.Default__OptionsSlider_C.OptionName
+#: /Game/Blueprints/UI/Styles/OptionsSlider.Default__OptionsSlider_C.OptionName
+msgctxt ",88CB769A43B7304921BBB5BBD1163403"
+msgid "Text"
+msgstr ""
+
+#. Key:	8A7A09614F9A5F04565E1DB58706D13E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+msgctxt ",8A7A09614F9A5F04565E1DB58706D13E"
+msgid "Graphics"
+msgstr ""
+
+#. Key:	8AD4C8A34152AD34A21E41B93C61BC16
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+msgctxt ",8AD4C8A34152AD34A21E41B93C61BC16"
+msgid "Text"
+msgstr ""
+
+#. Key:	8C5F1B734D3D3B4B66E7A6A56D15D51E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.ResetButton.Text
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.ResetButton.Text
+msgctxt ",8C5F1B734D3D3B4B66E7A6A56D15D51E"
+msgid "RESET AUDIO SETTINGS"
+msgstr ""
+
+#. Key:	901012364CD7E81F3A68D086E9DDC908
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionName
+msgctxt ",901012364CD7E81F3A68D086E9DDC908"
+msgid "Anti Aliasing Method"
+msgstr ""
+
+#. Key:	924505754BCBABF7027B1086F0818510
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SSROptionsPicker.OptionDescription
+msgctxt ",924505754BCBABF7027B1086F0818510"
+msgid "Activate screen space reflections."
+msgstr ""
+
+#. Key:	9433DBE04806689F7F581485F37EBBD4
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionDescription
+msgctxt ",9433DBE04806689F7F581485F37EBBD4"
+msgid "Choose the language for the game."
+msgstr ""
+
+#. Key:	985E60484F58A6DFA38FC88A9993E7C2
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MasterOptionsSlider.OptionDescription
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MasterOptionsSlider.OptionDescription
+msgctxt ",985E60484F58A6DFA38FC88A9993E7C2"
+msgid "Adjust the Master Volume."
+msgstr ""
+
+#. Key:	98B7A4C149AB51970E9B4FAFF95F8DC1
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",98B7A4C149AB51970E9B4FAFF95F8DC1"
+msgid "Borderless"
+msgstr ""
+
+#. Key:	98F30AF14F8714E3E479E5BE3A70527B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SFXOptionsSlider.OptionDescription
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.SFXOptionsSlider.OptionDescription
+msgctxt ",98F30AF14F8714E3E479E5BE3A70527B"
+msgid "Adjust the Sound Effects Volume."
+msgstr ""
+
+#. Key:	9977FE4842F2E7CCA56864B9C24BA8A2
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",9977FE4842F2E7CCA56864B9C24BA8A2"
+msgid "Off"
+msgstr ""
+
+#. Key:	998C1FF14316A04E99352AB89119C2E4
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+msgctxt ",998C1FF14316A04E99352AB89119C2E4"
+msgid "Text"
+msgstr ""
+
+#. Key:	9BCFBF9443B97194C3F16CBAE9A01CFD
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",9BCFBF9443B97194C3F16CBAE9A01CFD"
+msgid "Epic"
+msgstr ""
+
+#. Key:	9BDBA4604F36FA29A453879FDE7E93F9
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionName
+msgctxt ",9BDBA4604F36FA29A453879FDE7E93F9"
+msgid "Window Mode"
+msgstr ""
+
+#. Key:	9D34C9E8402815E845BBCD84000A441B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.BackButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.BackButton.Text
+msgctxt ",9D34C9E8402815E845BBCD84000A441B"
+msgid "BACK"
+msgstr ""
+
+#. Key:	9F0151174C4DFAB9688137B93A5F4950
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",9F0151174C4DFAB9688137B93A5F4950"
+msgid "Off"
+msgstr ""
+
+#. Key:	A356CAE14882B59C997E4184BDC49952
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MusicOptionsSlider.OptionName
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MusicOptionsSlider.OptionName
+msgctxt ",A356CAE14882B59C997E4184BDC49952"
+msgid "SFX Volume"
+msgstr ""
+
+#. Key:	A696BF224F059E2A205D37AE7BFBD935
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.BackButton.Text
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.BackButton.Text
+msgctxt ",A696BF224F059E2A205D37AE7BFBD935"
+msgid "BACK"
+msgstr ""
+
+#. Key:	A9732A774536A2F007270DACE7C9D0AA
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+msgctxt ",A9732A774536A2F007270DACE7C9D0AA"
+msgid "Audio"
+msgstr ""
+
+#. Key:	AC62EDB94663A58B46E13A812563F0B3
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionDescription
+msgctxt ",AC62EDB94663A58B46E13A812563F0B3"
+msgid "Set the quality of foliage."
+msgstr ""
+
+#. Key:	AD4F3666402B7385D345E0AC165F6DE1
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.ResumeButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.ResumeButton.Text
+msgctxt ",AD4F3666402B7385D345E0AC165F6DE1"
+msgid "Resume"
+msgstr ""
+
+#. Key:	AD9DE91048D5FF4AD6FA8A8BA3836952
+#. SourceLocation:	/Game/Blueprints/UI/Styles/MainButton.Default__MainButton_C.Text
+#: /Game/Blueprints/UI/Styles/MainButton.Default__MainButton_C.Text
+msgctxt ",AD9DE91048D5FF4AD6FA8A8BA3836952"
+msgid "Text"
+msgstr ""
+
+#. Key:	AFEDEC604CAA8B0E28301DB0D3067E4D
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.VoiceOptionsSlider.OptionDescription
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.VoiceOptionsSlider.OptionDescription
+msgctxt ",AFEDEC604CAA8B0E28301DB0D3067E4D"
+msgid "Adjust the Voice Volume."
+msgstr ""
+
+#. Key:	B02BA76841B5C64FA7F884ADCF7C28BB
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.LoadButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.LoadButton.Text
+msgctxt ",B02BA76841B5C64FA7F884ADCF7C28BB"
+msgid "Load"
+msgstr ""
+
+#. Key:	B04776D74DF2B5C08F0036AF02B854CD
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",B04776D74DF2B5C08F0036AF02B854CD"
+msgid "Off"
+msgstr ""
+
+#. Key:	B194742A49113027EFD0B08D4D45E8FC
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",B194742A49113027EFD0B08D4D45E8FC"
+msgid "Medium"
+msgstr ""
+
+#. Key:	B23893C941E378FF0E72F3BE7FD8312C
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.DisplayResolutionOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.DisplayResolutionOptionsPicker.OptionDescription
+msgctxt ",B23893C941E378FF0E72F3BE7FD8312C"
+msgid "Select the display resolution for the game."
+msgstr ""
+
+#. Key:	B2695A5B4E12C89070F2CDA47939961D
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MasterOptionsSlider.OptionName
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.MasterOptionsSlider.OptionName
+msgctxt ",B2695A5B4E12C89070F2CDA47939961D"
+msgid "Master Volume"
+msgstr ""
+
+#. Key:	B361611C4A8FA5352AEFEA8DC802D571
+#. SourceLocation:	/Game/Blueprints/UI/Styles/KeyButton.KeyButton_C:WidgetTree.ButtonText.Text
+#: /Game/Blueprints/UI/Styles/KeyButton.KeyButton_C:WidgetTree.ButtonText.Text
+msgctxt ",B361611C4A8FA5352AEFEA8DC802D571"
+msgid "Text"
+msgstr ""
+
+#. Key:	B3F7466F44D365FCC0314B992BE0E7E0
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionName
+msgctxt ",B3F7466F44D365FCC0314B992BE0E7E0"
+msgid "Ambient Occlusion"
+msgstr ""
+
+#. Key:	B4F31CB9465991C5612CA3AA715AE07F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.GameplayButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.GameplayButton.Text
+msgctxt ",B4F31CB9465991C5612CA3AA715AE07F"
+msgid "Gameplay"
+msgstr ""
+
+#. Key:	B520EB2447BB6C191CD67BAF1FA6C977
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",B520EB2447BB6C191CD67BAF1FA6C977"
+msgid "Full Screen"
+msgstr ""
+
+#. Key:	B6B66203410A93761E994DA4366851C8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",B6B66203410A93761E994DA4366851C8"
+msgid "Epic"
+msgstr ""
+
+#. Key:	B6FFE3024631271844DF0589C3AF3954
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AmbientOcclusionOptionsPicker.OptionDescription
+msgctxt ",B6FFE3024631271844DF0589C3AF3954"
+msgid "Enable ambient occlusion."
+msgstr ""
+
+#. Key:	B80279F44CB7F3202855A5A0F9426F06
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionName
+msgctxt ",B80279F44CB7F3202855A5A0F9426F06"
+msgid "View Distance"
+msgstr ""
+
+#. Key:	B8A622F84DEEAB4D9D58E785D4494B37
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ResetButton.Text
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ResetButton.Text
+msgctxt ",B8A622F84DEEAB4D9D58E785D4494B37"
+msgid "RESET DISPLAY SETTINGS"
+msgstr ""
+
+#. Key:	B912246C43CB4A0A245D2EB725A9E264
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",B912246C43CB4A0A245D2EB725A9E264"
+msgid "Epic"
+msgstr ""
+
+#. Key:	BB868877479FA90E4F3442B0FC70939E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",BB868877479FA90E4F3442B0FC70939E"
+msgid "German"
+msgstr ""
+
+#. Key:	BBA2BE4F4F18398C696F9EA1318F6102
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",BBA2BE4F4F18398C696F9EA1318F6102"
+msgid "Medium"
+msgstr ""
+
+#. Key:	BBBC097E4F159F2CB16FF0A51A42BD4B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionDescription
+msgctxt ",BBBC097E4F159F2CB16FF0A51A42BD4B"
+msgid "Adjust the quality of all graphics settings."
+msgstr ""
+
+#. Key:	BBBFFD9F476033CCDC52ED87E2EE7223
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.NewGameButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.NewGameButton.Text
+msgctxt ",BBBFFD9F476033CCDC52ED87E2EE7223"
+msgid "New Game"
+msgstr ""
+
+#. Key:	BC040ED04EC1A5285C524F8F49DABEE8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SelectedOptionDescription.Text
+msgctxt ",BC040ED04EC1A5285C524F8F49DABEE8"
+msgid "Text"
+msgstr ""
+
+#. Key:	BCF699224B75B5750DD763B29708C817
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BackButton.Text
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BackButton.Text
+msgctxt ",BCF699224B75B5750DD763B29708C817"
+msgid "BACK"
+msgstr ""
+
+#. Key:	BF96CF9246BED407B60ACDA5FFEB238A
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",BF96CF9246BED407B60ACDA5FFEB238A"
+msgid "Medium"
+msgstr ""
+
+#. Key:	BFEEF31E4CD2D2A6339DECB4A4FEFB68
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.OptionsButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.OptionsButton.Text
+msgctxt ",BFEEF31E4CD2D2A6339DECB4A4FEFB68"
+msgid "Options"
+msgstr ""
+
+#. Key:	C02850C345210DE30D0538BE2CF7CED8
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsPicker.OptionsPicker_C:WidgetTree.PickedOptionText.Text
+#: /Game/Blueprints/UI/Styles/OptionsPicker.OptionsPicker_C:WidgetTree.PickedOptionText.Text
+msgctxt ",C02850C345210DE30D0538BE2CF7CED8"
+msgid "Text"
+msgstr ""
+
+#. Key:	C037EC934E308D1FB8815DB4762E1C54
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.LanguageOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",C037EC934E308D1FB8815DB4762E1C54"
+msgid "English"
+msgstr ""
+
+#. Key:	C3F761D948D20437FF3318BBDD12E993
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionDescription
+msgctxt ",C3F761D948D20437FF3318BBDD12E993"
+msgid "Set the quality of the textures."
+msgstr ""
+
+#. Key:	C60E8C6041CF3331A8F93BBE430F3C7E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.GameplayButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.GameplayButton.Text
+msgctxt ",C60E8C6041CF3331A8F93BBE430F3C7E"
+msgid "Gameplay"
+msgstr ""
+
+#. Key:	C6E373AD432011DAA4942DA1EF96943C
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionDescription
+msgctxt ",C6E373AD432011DAA4942DA1EF96943C"
+msgid "Enable Bloom."
+msgstr ""
+
+#. Key:	C77B94C04B8BBFA0F2662987D2707033
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",C77B94C04B8BBFA0F2662987D2707033"
+msgid "Epic"
+msgstr ""
+
+#. Key:	CA9EBC16404B2EDBA033A8A26DE4369D
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsPicker.OptionsPicker_C:WidgetTree.OptionNameText.Text
+#: /Game/Blueprints/UI/Styles/OptionsPicker.OptionsPicker_C:WidgetTree.OptionNameText.Text
+msgctxt ",CA9EBC16404B2EDBA033A8A26DE4369D"
+msgid "Text"
+msgstr ""
+
+#. Key:	CE180BD64C825ECAB98BEB8B8F95E332
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ShowFPSOptionsPicker.OptionDescription
+msgctxt ",CE180BD64C825ECAB98BEB8B8F95E332"
+msgid "Enables the frames per second (FPS) counter."
+msgstr ""
+
+#. Key:	CFE904F147DE00F1FCE703BB5B62AA2D
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ApplyButton.Text
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.ApplyButton.Text
+msgctxt ",CFE904F147DE00F1FCE703BB5B62AA2D"
+msgid "APPLY"
+msgstr ""
+
+#. Key:	D0AA094545A240A9BD9679B8DCB7B1D7
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",D0AA094545A240A9BD9679B8DCB7B1D7"
+msgid "Windowed"
+msgstr ""
+
+#. Key:	D2AA3F4D498D6A5FCE77BDAC81E80F7E
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.ContinueButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.ContinueButton.Text
+msgctxt ",D2AA3F4D498D6A5FCE77BDAC81E80F7E"
+msgid "Continue"
+msgstr ""
+
+#. Key:	D34C8BC34A513F5D8E098DAB2611D553
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionsArray(0).OptionsArray
+msgctxt ",D34C8BC34A513F5D8E098DAB2611D553"
+msgid "None"
+msgstr ""
+
+#. Key:	D4702E4E41F500374869E599368EDB23
+#. SourceLocation:	/Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.VoiceOptionsSlider.OptionName
+#: /Game/Blueprints/UI/Menus/AudioSettingsWidgetBP.AudioSettingsWidgetBP_C:WidgetTree.VoiceOptionsSlider.OptionName
+msgctxt ",D4702E4E41F500374869E599368EDB23"
+msgid "Voice Volume"
+msgstr ""
+
+#. Key:	D4BED36B402E25BAD1545690DB232401
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.BloomOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",D4BED36B402E25BAD1545690DB232401"
+msgid "Off"
+msgstr ""
+
+#. Key:	D6DF99D74DD03F253B7F0A9439A562A3
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionName
+msgctxt ",D6DF99D74DD03F253B7F0A9439A562A3"
+msgid "Subtitles"
+msgstr ""
+
+#. Key:	D7105A424ED4D3D1D5A87D9E184CE1D7
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ViewDistanceOptionsPicker.OptionDescription
+msgctxt ",D7105A424ED4D3D1D5A87D9E184CE1D7"
+msgid "Objects will be hidden based on their distance to the player."
+msgstr ""
+
+#. Key:	D82D18084CC2E413C1CE208D31BF0D44
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",D82D18084CC2E413C1CE208D31BF0D44"
+msgid "144"
+msgstr ""
+
+#. Key:	D89C287342F3CB20E461CD90A6952C81
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(1).OptionsArray
+msgctxt ",D89C287342F3CB20E461CD90A6952C81"
+msgid "30"
+msgstr ""
+
+#. Key:	DADBFB2440F4E442168E58AF858C3AB3
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionDescription
+msgctxt ",DADBFB2440F4E442168E58AF858C3AB3"
+msgid "Adjust the quality of shadows."
+msgstr ""
+
+#. Key:	DB1698054355864A120870B8F9A8C5C4
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.SelectedOptionName.Text
+msgctxt ",DB1698054355864A120870B8F9A8C5C4"
+msgid "Text"
+msgstr ""
+
+#. Key:	DB933E484DEFD56B1E45A182076086DE
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.VSyncOptionsPicker.OptionDescription
+msgctxt ",DB933E484DEFD56B1E45A182076086DE"
+msgid "Enables vertical synchronization to prevent screen tearing."
+msgstr ""
+
+#. Key:	DD11837B47A4CE200C1E0D886F1CC667
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ShadowsOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",DD11837B47A4CE200C1E0D886F1CC667"
+msgid "Low"
+msgstr ""
+
+#. Key:	E43735D444AA81832E5695B532C76495
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.TexturesOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",E43735D444AA81832E5695B532C76495"
+msgid "High"
+msgstr ""
+
+#. Key:	E5209E6F46DAD3AED99FD6A6AFCA041A
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ApplyButton.Text
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.ApplyButton.Text
+msgctxt ",E5209E6F46DAD3AED99FD6A6AFCA041A"
+msgid "APPLY"
+msgstr ""
+
+#. Key:	E5CF31074C12F8E1395FE3BF424AF6BD
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",E5CF31074C12F8E1395FE3BF424AF6BD"
+msgid "High"
+msgstr ""
+
+#. Key:	E5F04B3440E7BDDE466012AFAD65F9F8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",E5F04B3440E7BDDE466012AFAD65F9F8"
+msgid "Off"
+msgstr ""
+
+#. Key:	E7A987AA4DBDF0A360340596F364E847
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.WindowModeOptionsPicker.OptionDescription
+msgctxt ",E7A987AA4DBDF0A360340596F364E847"
+msgid "Select the display mode for the game."
+msgstr ""
+
+#. Key:	E7C8F4BF4C554262AEE6918AECADC691
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.SaveButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.SaveButton.Text
+msgctxt ",E7C8F4BF4C554262AEE6918AECADC691"
+msgid "Save"
+msgstr ""
+
+#. Key:	E81EA24A4C645C8F87CD5787DC0589FF
+#. SourceLocation:	/Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.QuitButton.Text
+#: /Game/Blueprints/UI/Menus/MainMenuWidgetBP.MainMenuWidgetBP_C:WidgetTree.QuitButton.Text
+msgctxt ",E81EA24A4C645C8F87CD5787DC0589FF"
+msgid "Quit to Desktop"
+msgstr ""
+
+#. Key:	E878EABD47916848CFEC41996C9DE13B
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(4).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(4).OptionsArray
+msgctxt ",E878EABD47916848CFEC41996C9DE13B"
+msgid "Custom"
+msgstr ""
+
+#. Key:	E89AC76941733E086F5DDCBD26268283
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.SubtitleOptionsPicker.OptionDescription
+msgctxt ",E89AC76941733E086F5DDCBD26268283"
+msgid "Enable Subtitles."
+msgstr ""
+
+#. Key:	EA888F294046171D2144CDA11CAD776F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.LensFlaresOptionsPicker.OptionName
+msgctxt ",EA888F294046171D2144CDA11CAD776F"
+msgid "Lens Flares"
+msgstr ""
+
+#. Key:	EB21E13C4396C1C7232612A6AEB87573
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionsArray(1).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.AntiAliasingMethodOptionPicker.OptionsArray(1).OptionsArray
+msgctxt ",EB21E13C4396C1C7232612A6AEB87573"
+msgid "FXAA"
+msgstr ""
+
+#. Key:	EBDCC5A64A189A705DABC8B42FC9FAA8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.MotionBlurOptionsPicker.OptionName
+msgctxt ",EBDCC5A64A189A705DABC8B42FC9FAA8"
+msgid "Motion Blur"
+msgstr ""
+
+#. Key:	ECE2E9464FF50B71EFEE298F9317E8E4
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionName
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionName
+msgctxt ",ECE2E9464FF50B71EFEE298F9317E8E4"
+msgid "Effects"
+msgstr ""
+
+#. Key:	ECE917B84E1319E2C6EFF8988B7A1C32
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.TextBlock_2.Text
+msgctxt ",ECE917B84E1319E2C6EFF8988B7A1C32"
+msgid "Game"
+msgstr ""
+
+#. Key:	EE30204A480A4065C4F11BA66D4B3DC3
+#. SourceLocation:	/Game/Blueprints/UI/Styles/MainButton.MainButton_C:WidgetTree.ButtonText.Text
+#: /Game/Blueprints/UI/Styles/MainButton.MainButton_C:WidgetTree.ButtonText.Text
+msgctxt ",EE30204A480A4065C4F11BA66D4B3DC3"
+msgid "Text"
+msgstr ""
+
+#. Key:	EEA54C944C896F1DB73469A963C7AEA2
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",EEA54C944C896F1DB73469A963C7AEA2"
+msgid "Low"
+msgstr ""
+
+#. Key:	EF07CA7E4C065859D76E88A537C778C8
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.TextBlock_1.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.TextBlock_1.Text
+msgctxt ",EF07CA7E4C065859D76E88A537C778C8"
+msgid "Pause"
+msgstr ""
+
+#. Key:	F0A6971F4FD9E21DD5FFB3AF7020D8F3
+#. SourceLocation:	/Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.AudioButton.Text
+#: /Game/Blueprints/UI/Menus/IngameMenuWidgetBP.IngameMenuWidgetBP_C:WidgetTree.AudioButton.Text
+msgctxt ",F0A6971F4FD9E21DD5FFB3AF7020D8F3"
+msgid "Audio"
+msgstr ""
+
+#. Key:	F1C330284E7FCCAE61BAE9A2971A3E31
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",F1C330284E7FCCAE61BAE9A2971A3E31"
+msgid "Epic"
+msgstr ""
+
+#. Key:	F22E267F495029E97375B68F34C3BCF6
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.FoliageOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",F22E267F495029E97375B68F34C3BCF6"
+msgid "Epic"
+msgstr ""
+
+#. Key:	F2C6D03B4C19946028F54D910E3BA486
+#. SourceLocation:	/Game/Blueprints/UI/Styles/OptionsSlider.Default__OptionsSlider_C.OptionDescription
+#: /Game/Blueprints/UI/Styles/OptionsSlider.Default__OptionsSlider_C.OptionDescription
+msgctxt ",F2C6D03B4C19946028F54D910E3BA486"
+msgid "Text"
+msgstr ""
+
+#. Key:	F2E185BB4259395614DBC2BB1D1C5733
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(3).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.EffectsOptionsPicker.OptionsArray(3).OptionsArray
+msgctxt ",F2E185BB4259395614DBC2BB1D1C5733"
+msgid "Epic"
+msgstr ""
+
+#. Key:	F2F71EA64B723E80C6A07C8C5B1653F0
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionDescription
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PostProcessingOptionsPicker.OptionDescription
+msgctxt ",F2F71EA64B723E80C6A07C8C5B1653F0"
+msgid "Adjust the quality of post processing effects."
+msgstr ""
+
+#. Key:	F6592CBA4D767E6C82D534A224642ED4
+#. SourceLocation:	/Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(2).OptionsArray
+#: /Game/Blueprints/UI/Menus/DisplaySettingsWidgetBP.DisplaySettingsWidgetBP_C:WidgetTree.LockFPSOptionsPicker.OptionsArray(2).OptionsArray
+msgctxt ",F6592CBA4D767E6C82D534A224642ED4"
+msgid "60"
+msgstr ""
+
+#. Key:	FC55F97940E133BA2F80E78BB0AB5659
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(0).OptionsArray
+#: /Game/Blueprints/UI/Menus/GraphicsSettingsWidgetBP.GraphicsSettingsWidgetBP_C:WidgetTree.PresetOptionsPicker.OptionsArray(0).OptionsArray
+msgctxt ",FC55F97940E133BA2F80E78BB0AB5659"
+msgid "Low"
+msgstr ""
+
+#. Key:	FEABCFA74D9F2AE3D87DE7990D6E5D8F
+#. SourceLocation:	/Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.ResetButton.Text
+#: /Game/Blueprints/UI/Menus/GameSettingsWidgetBP.GameSettingsWidgetBP_C:WidgetTree.ResetButton.Text
+msgctxt ",FEABCFA74D9F2AE3D87DE7990D6E5D8F"
+msgid "RESET GAME SETTINGS"
+msgstr ""
+
