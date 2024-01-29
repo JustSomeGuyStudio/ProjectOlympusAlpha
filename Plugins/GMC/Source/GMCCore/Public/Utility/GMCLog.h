@@ -35,6 +35,8 @@
 
 #define BOOL_TO_STR(X) ((X) ? TEXT("true") : TEXT("false"))
 
+#define GET_NAME(X) ((X) ? *(X)->GetName() : TEXT("nullptr"))
+
 template<typename T> T& Unused(T&& Var) { return Var; }
 #define UNUSED(Type) (Unused(Type{}))
 
@@ -161,7 +163,7 @@ inline FString GetRotatorAsString(const FRotator& Value, EGMC_FloatPrecision Pre
   return "";
 }
 
-inline FString GetTranformAsString(const FTransform& Value, EGMC_FloatPrecision Precision)
+inline FString GetTransformAsString(const FTransform& Value, EGMC_FloatPrecision Precision)
 {
   const auto& Translation = Value.GetTranslation();
   const auto& Rotation = Value.GetRotation().Rotator();

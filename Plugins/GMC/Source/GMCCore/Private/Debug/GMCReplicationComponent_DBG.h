@@ -475,7 +475,7 @@
   {\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client replay ::: Logging client state before replay."))\
     FGMC_PawnState DebugCurrentState{};\
-    InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForPrediction, this);\
     LogSyncData(DebugCurrentState, this, TEXT("Client replay ::: "));\
   }
@@ -484,7 +484,7 @@
   {\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client replay ::: Logging corrected client state before replay."))\
     FGMC_PawnState DebugCurrentState{};\
-    InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForPrediction, this);\
     LogSyncData(DebugCurrentState, this, TEXT("Client replay ::: "));\
   }
@@ -493,7 +493,7 @@
   {\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client replay ::: Logging corrected client state after replay."))\
     FGMC_PawnState DebugCurrentState{};\
-    InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForPrediction, this);\
     LogSyncData(DebugCurrentState, this, TEXT("Client replay ::: "));\
   }
@@ -522,7 +522,7 @@
     LogSyncData(InterpState, this, TEXT("Smoothing ::: "));\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Smoothing ::: New state:"))\
     FGMC_PawnState DebugCurrentState{};\
-    InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForSimulation, this);\
     LogSyncData(DebugCurrentState, this, TEXT("Smoothing ::: "));\
   }
@@ -541,7 +541,7 @@
     LogSyncData(LastMove.OutputState, this, TEXT("Smoothing ::: "));\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Smoothing ::: New state:"))\
     FGMC_PawnState DebugCurrentState{};\
-    InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForSimulation, this);\
     LogSyncData(DebugCurrentState, this, TEXT("Smoothing ::: "));\
   }
@@ -562,7 +562,7 @@
       LogSyncData(bUseInputStates ? NextMove.InputState : NextMove.OutputState, this, TEXT("Smoothing ::: "));\
       GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Smoothing ::: New state:"))\
       FGMC_PawnState DebugCurrentState{};\
-      InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+      InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
       ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForSimulation, this);\
       LogSyncData(DebugCurrentState, this, TEXT("Smoothing ::: "));\
     }\
@@ -588,7 +588,7 @@
   {\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Smoothing ::: New state:"))\
     FGMC_PawnState DebugCurrentState{};\
-    InitializeSyncData(DebugCurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(DebugCurrentState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(DebugCurrentState, {DataOp::Save}, AliasData, bUseRelativeValuesForSimulation, this);\
     LogSyncData(DebugCurrentState, this, TEXT("Smoothing ::: "));\
   }
@@ -701,7 +701,7 @@
   {\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client move trace ::: Server executed remote move with timestamp %f s and delta time %f s."), ClientMove.MetaData.Timestamp, ClientMove.MetaData.DeltaTime)\
     FGMC_PawnState CurrentServerState{};\
-    InitializeSyncData(CurrentServerState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(CurrentServerState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(CurrentServerState, {DataOp::Save}, AliasData, bUseRelative, this);\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client move trace ::: Input state:"))\
     LogSyncData(ClientMove.InputState, this, TEXT("Client move trace ::: "));\
@@ -713,7 +713,7 @@
   {\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client move trace ::: Server validated remote move with timestamp %f s and delta time %f s."), ClientMove.MetaData.Timestamp, ClientMove.MetaData.DeltaTime)\
     FGMC_PawnState CurrentServerState{};\
-    InitializeSyncData(CurrentServerState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
+    InitializeSyncData(CurrentServerState, ReplicationSettings, GetSyncTagsData(), AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);\
     ProcessSyncData(CurrentServerState, {DataOp::Save}, AliasData, bUseRelative, this);\
     GMC_LOG(LogGMCReplication, PawnOwner, Log, TEXT("Client move trace ::: Input state:"))\
     LogSyncData(ClientMove.InputState, this, TEXT("Client move trace ::: "));\

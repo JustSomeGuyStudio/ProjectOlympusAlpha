@@ -651,9 +651,8 @@ void SerializeVector(const T& Vector, EGMC_FloatPrecision Scale, FArchive& Ar)
   {
     ScaledVectorX *= (int32)Scale;
     ScaledVectorY *= (int32)Scale;
-    if      constexpr (bIs3D || bIs4D) { ScaledVectorZ *= (int32)Scale; }
-    else if constexpr (bIs4D         ) { ScaledVectorW *= (int32)Scale; }
-    else {}
+    if constexpr (bIs3D || bIs4D) { ScaledVectorZ *= (int32)Scale; } else {}
+    if constexpr (bIs4D         ) { ScaledVectorW *= (int32)Scale; } else {}
   }
 
   // Determine the bit count max of the compressed vector.

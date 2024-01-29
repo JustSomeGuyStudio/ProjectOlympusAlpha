@@ -14,7 +14,7 @@ class GMCCORE_API AGMC_Pawn : public APawn
 
 public:
 
-  AGMC_Pawn();
+  AGMC_Pawn(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
   void PostInitializeComponents() override;
   void BeginPlay() override;
   bool IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const override;
@@ -54,6 +54,17 @@ public:
 
 protected:
 
+  void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+  /// Called on the server and owning client when the controller for this pawn has changed.
+  ///
+  /// @param        NewController    The new controller.
+  /// @param        OldController    The previous controller.
+  /// @returns      void
+  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component")
+  void OnControllerChanged(AController* NewController, AController* OldController);
+  virtual void OnControllerChanged_Implementation(AController* NewController, AController* OldController);
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   /// Cached reference to the GMC aggregator (if present).
   TObjectPtr<class AGMC_Aggregator> GMCAggregator{nullptr};
@@ -61,8 +72,6 @@ protected:
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
   /// The replication component of this pawn.
   TObjectPtr<UGMC_ReplicationCmp> ReplicationComponent{nullptr};
-
-  void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 private:
 

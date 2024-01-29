@@ -986,7 +986,14 @@ FVector UGMC_MovementUtilityCmp::GetPlaneNormalWithWorldZ(const FVector& Directi
   return (Direction ^ FVector::UpVector).GetSafeNormal();
 }
 
-bool UGMC_MovementUtilityCmp::UpdateFloor(FGMC_FloorParams& Floor, float TraceLength, float Tolerance, bool bAutoAdjust, bool bForceUpdate)
+bool UGMC_MovementUtilityCmp::UpdateFloor(
+  FGMC_FloorParams& Floor,
+  const FVector& Direction,
+  float TraceLength,
+  float Tolerance,
+  bool bAutoAdjust,
+  bool bForceUpdate
+)
 {
   SCOPE_CYCLE_COUNTER(STAT_UpdateFloor)
 
@@ -1010,10 +1017,16 @@ bool UGMC_MovementUtilityCmp::UpdateFloor(FGMC_FloorParams& Floor, float TraceLe
     return true;
   }
 
+  const FVector NormalizedDirection = Direction.GetSafeNormal();
+  if (NormalizedDirection.IsZero())
+  {
+    return false;
+  }
+
   // Execute the shape trace.
   bool bValidShapeHitData{false};
   ShapeHit = SweepRootCollisionSingleByChannel(
-    FVector::DownVector,
+    NormalizedDirection,
     TraceLength,
     FVector::ZeroVector,
     FQuat::Identity,
@@ -1030,7 +1043,7 @@ bool UGMC_MovementUtilityCmp::UpdateFloor(FGMC_FloorParams& Floor, float TraceLe
 
       // Execute the shape trace again after the adjustment.
       ShapeHit = SweepRootCollisionSingleByChannel(
-        FVector::DownVector,
+        NormalizedDirection,
         TraceLength,
         FVector::ZeroVector,
         FQuat::Identity,
@@ -1052,8 +1065,8 @@ bool UGMC_MovementUtilityCmp::UpdateFloor(FGMC_FloorParams& Floor, float TraceLe
 
   // Execute the line trace.
   bool bValidLineHitData{false};
-  const FVector LineTraceStart = GetLowerBound();
-  const FVector LineTraceEnd = LineTraceStart + FVector::DownVector * TraceLength;
+  const FVector LineTraceStart = CurrentLocation + NormalizedDirection * GetRootCollisionHalfHeight(true);
+  const FVector LineTraceEnd = LineTraceStart + NormalizedDirection * TraceLength;
   FCollisionQueryParams CollisionQueryParams(SCENE_QUERY_STAT(UpdateFloor), false, GetOwner());
   CollisionQueryParams.AddIgnoredActors(UpdatedPrimitive->GetMoveIgnoreActors());
   CollisionQueryParams.AddIgnoredComponents(UpdatedPrimitive->GetMoveIgnoreComponents());
@@ -2972,7 +2985,7 @@ USceneComponent* UGMC_MovementUtilityCmp::SetRootCollisionShape(EGMC_CollisionSh
     default: gmc_ckne() return OriginalRootComponent;
   }
 
-  TArray<USceneComponent*> RootChildrenExclusive;
+  TArray<USceneComponent*> RootChildrenExclusive{};
   OriginalRootComponent->GetChildrenComponents(false, RootChildrenExclusive);
   PawnOwner->AddInstanceComponent(NewRootComponent);
   NewRootComponent->RegisterComponent();
@@ -3314,6 +3327,10 @@ void UGMC_MovementUtilityCmp::CopyComponentSettings(UShapeComponent* Source, USh
   // Ray Tracing.
   Target->RayTracingGroupId = Source->RayTracingGroupId;
   Target->RayTracingGroupCullingPriority = Source->RayTracingGroupCullingPriority;
+
+  // Move Ignore Objects.
+  Target->MoveIgnoreActors = Source->CopyArrayOfMoveIgnoreActors();
+  Target->MoveIgnoreComponents = Source->CopyArrayOfMoveIgnoreComponents();
 }
 
 float UGMC_MovementUtilityCmp::GetMontageBlendInTime(UAnimMontage* Montage) const
@@ -4308,24 +4325,18 @@ bool UGMC_MovementUtilityCmp::FilterOverlap(
 {
   auto& PawnStatus = Aux.Status.FindOrAdd(this);
 
-  if (!PawnStatus.bInitialized)
+  const auto Initialize = [this, Type](bool bInitToActive, auto& PawnStatus, auto& Aux)
   {
-    Aux.Reset(Type == EGMC_OverlapType::End, this);
-    PawnStatus.bInitialized = true;
-  }
+    if (!PawnStatus.bInitialized)
+    {
+      Aux.Reset(bInitToActive, this);
+      PawnStatus.bInitialized = true;
+    }
+  };
 
   const auto Filter = [this, Type](bool& AuxFlag, bool bClientMove)
   {
-    if (Type == EGMC_OverlapType::Hit)
-    {
-      if (bClientMove)
-      {
-        CL_DoNotCombineNextMove();
-      }
-
-      return true;
-    }
-    else if (Type == EGMC_OverlapType::Begin)
+    if (Type == EGMC_OverlapType::Begin)
     {
       if (AuxFlag)
       {
@@ -4364,47 +4375,85 @@ bool UGMC_MovementUtilityCmp::FilterOverlap(
   // No early returns, the aux flags must be updated for each context.
   bool ReturnValue = false;
 
-  if (bServerMove)
+  // Whether the pawn was moved outside of a GMC context.
+  bool bExternalMove = true;
+
+  if (bServerMove || bExternalMove)
   {
     if (IsServerPawn() && IsExecutingNonSimulatedMove())
     {
-      ReturnValue |= Filter(PawnStatus.bServerMoveActive, false);
+      bExternalMove = false;
+
+      if (bServerMove)
+      {
+        Initialize(Type == EGMC_OverlapType::End, PawnStatus, Aux);
+        ReturnValue |= Filter(PawnStatus.bServerMoveActive, false);
+      }
     }
   }
 
-  if (bClientMove)
+  if (bClientMove || bExternalMove)
   {
     if (!CL_IsReplaying() && IsExecutingNonSimulatedMove() && IsPredictedAutonomousProxy())
     {
-      ReturnValue |= Filter(PawnStatus.bClientMoveActive, true);
+      bExternalMove = false;
+
+      if (bClientMove)
+      {
+        Initialize(Type == EGMC_OverlapType::End, PawnStatus, Aux);
+        ReturnValue |= Filter(PawnStatus.bClientMoveActive, true);
+      }
     }
   }
 
-  if (bClientReplay)
+  if (bClientReplay || bExternalMove)
   {
     if (CL_IsReplaying() && IsExecutingNonSimulatedMove())
     {
       gmc_ck(IsPredictedAutonomousProxy())
-      ReturnValue |= Filter(PawnStatus.bClientReplayActive, false);
+      bExternalMove = false;
+
+      if (bClientReplay)
+      {
+        Initialize(Type == EGMC_OverlapType::End, PawnStatus, Aux);
+        ReturnValue |= Filter(PawnStatus.bClientReplayActive, false);
+      }
     }
   }
 
-  if (bSimulationInterp)
+  if (bSimulationInterp || bExternalMove)
   {
     if (IsSimulating() && GetLastInterpTargetTime() >= 0.)
     {
       gmc_ck(!IsExtrapolating())
-      ReturnValue |= Filter(PawnStatus.bSimulationInterpActive, false);
+      bExternalMove = false;
+
+      if (bSimulationInterp)
+      {
+        Initialize(Type == EGMC_OverlapType::End, PawnStatus, Aux);
+        ReturnValue |= Filter(PawnStatus.bSimulationInterpActive, false);
+      }
     }
   }
 
-  if (bSimulationExtrap)
+  if (bSimulationExtrap || bExternalMove)
   {
     if (IsSimulating() && IsExtrapolating())
     {
       gmc_ck(GetLastExtrapTargetTime() >= 0.)
-      ReturnValue |= Filter(PawnStatus.bSimulationExtrapActive, false);
+      bExternalMove = false;
+
+      if (bSimulationExtrap)
+      {
+        Initialize(Type == EGMC_OverlapType::End, PawnStatus, Aux);
+        ReturnValue |= Filter(PawnStatus.bSimulationExtrapActive, false);
+      }
     }
+  }
+
+  if (bExternalMove)
+  {
+    Initialize(Type == EGMC_OverlapType::Begin, PawnStatus, Aux);
   }
 
   return ReturnValue;

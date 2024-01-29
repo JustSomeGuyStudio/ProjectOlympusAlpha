@@ -2582,4 +2582,8 @@ struct GMCCORE_API TSyncType<FGameplayTagContainer> : public TSyncTypeMulti<FGam
   EGMC_SyncType GetTypeEnum(::UGMC_ReplicationCmp* const Component) const override;
 };
 
+#ifdef GMC_ENABLE_USER_SYNC_TYPES
+#include GMC_USER_INCLUDE_PATH_TYPE_INTF
+#endif
+
 }

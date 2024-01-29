@@ -12,8 +12,8 @@
 #include "GMCLog.h"
 
 DECLARE_CYCLE_STAT(TEXT("ControllerTicks"), STAT_ControllerTicks, STATGROUP_AGMC_Aggregator)
-DECLARE_CYCLE_STAT(TEXT("MovementComponentTicks"), STAT_MovementComponentTicks, STATGROUP_AGMC_Aggregator)
 DECLARE_CYCLE_STAT(TEXT("PawnTicks"), STAT_PawnTicks, STATGROUP_AGMC_Aggregator)
+DECLARE_CYCLE_STAT(TEXT("MovementComponentTicks"), STAT_MovementComponentTicks, STATGROUP_AGMC_Aggregator)
 DECLARE_CYCLE_STAT(TEXT("RollbackActorTicks"), STAT_RollbackActorTicks, STATGROUP_AGMC_Aggregator)
 DECLARE_CYCLE_STAT(TEXT("MeshComponentTicks"), STAT_MeshComponentTicks, STATGROUP_AGMC_Aggregator)
 
@@ -79,45 +79,6 @@ void AGMC_Aggregator::Tick(float DeltaTime)
   }
 
   {
-    SCOPE_CYCLE_COUNTER(STAT_MovementComponentTicks)
-
-    bool bNeedsReordering = false;
-    int32 PreviousOrderNumber = -1;
-    for (int32 Index = 0; Index < MovementComponents.Num(); ++Index)
-    {
-      const auto& MovementComponent = MovementComponents[Index];
-
-      if (!IsValid(MovementComponent))
-      {
-        MovementComponents.RemoveAt(Index);
-        --Index;
-        continue;
-      }
-
-      if (!bNeedsReordering)
-      {
-        bNeedsReordering = !VerifyOrder(GetMovementComponentOrderNumber(MovementComponent), PreviousOrderNumber);
-      }
-
-      if (MovementComponent->PrimaryComponentTick.IsTickFunctionEnabled())
-      {
-        UE_LOG(LogGMCReplication, VeryVerbose, TEXT("Possible double tick of \"%s\""), *MovementComponent->GetName())
-        MovementComponent->PrimaryComponentTick.SetTickFunctionEnable(false);
-      }
-
-      if (MovementComponent->PrimaryComponentTick.bCanEverTick)
-      {
-        MovementComponent->TickComponent(DeltaTime, ELevelTick::LEVELTICK_All, &MovementComponent->PrimaryComponentTick);
-      }
-    }
-
-    if (bNeedsReordering)
-    {
-      SortMovementComponents();
-    }
-  }
-
-  {
     SCOPE_CYCLE_COUNTER(STAT_PawnTicks)
 
     bool bNeedsReordering = false;
@@ -153,6 +114,45 @@ void AGMC_Aggregator::Tick(float DeltaTime)
     if (bNeedsReordering)
     {
       SortPawns();
+    }
+  }
+
+  {
+    SCOPE_CYCLE_COUNTER(STAT_MovementComponentTicks)
+
+    bool bNeedsReordering = false;
+    int32 PreviousOrderNumber = -1;
+    for (int32 Index = 0; Index < MovementComponents.Num(); ++Index)
+    {
+      const auto& MovementComponent = MovementComponents[Index];
+
+      if (!IsValid(MovementComponent))
+      {
+        MovementComponents.RemoveAt(Index);
+        --Index;
+        continue;
+      }
+
+      if (!bNeedsReordering)
+      {
+        bNeedsReordering = !VerifyOrder(GetMovementComponentOrderNumber(MovementComponent), PreviousOrderNumber);
+      }
+
+      if (MovementComponent->PrimaryComponentTick.IsTickFunctionEnabled())
+      {
+        UE_LOG(LogGMCReplication, VeryVerbose, TEXT("Possible double tick of \"%s\""), *MovementComponent->GetName())
+        MovementComponent->PrimaryComponentTick.SetTickFunctionEnable(false);
+      }
+
+      if (MovementComponent->PrimaryComponentTick.bCanEverTick)
+      {
+        MovementComponent->TickComponent(DeltaTime, ELevelTick::LEVELTICK_All, &MovementComponent->PrimaryComponentTick);
+      }
+    }
+
+    if (bNeedsReordering)
+    {
+      SortMovementComponents();
     }
   }
 
@@ -283,18 +283,6 @@ void AGMC_Aggregator::RegisterController(AController* Controller)
   SortControllers();
 }
 
-void AGMC_Aggregator::RegisterMovementComponent(UMovementComponent* MovementComponent)
-{
-  if (!IsValid(MovementComponent))
-  {
-    return;
-  }
-
-  MovementComponents.AddUnique(MovementComponent);
-
-  SortMovementComponents();
-}
-
 void AGMC_Aggregator::RegisterPawn(APawn* Pawn)
 {
   if (!IsValid(Pawn))
@@ -305,6 +293,18 @@ void AGMC_Aggregator::RegisterPawn(APawn* Pawn)
   Pawns.AddUnique(Pawn);
 
   SortPawns();
+}
+
+void AGMC_Aggregator::RegisterMovementComponent(UMovementComponent* MovementComponent)
+{
+  if (!IsValid(MovementComponent))
+  {
+    return;
+  }
+
+  MovementComponents.AddUnique(MovementComponent);
+
+  SortMovementComponents();
 }
 
 void AGMC_Aggregator::RegisterRollbackActor(AGMC_RollbackActor* RollbackActor)
@@ -337,15 +337,15 @@ void AGMC_Aggregator::UnregisterController(AController* Controller)
   gmc_ck(NumRemoved <= 1)
 }
 
-void AGMC_Aggregator::UnregisterMovementComponent(UMovementComponent* MovementComponent)
-{
-  const int32 NumRemoved = MovementComponents.Remove(MovementComponent);
-  gmc_ck(NumRemoved <= 1)
-}
-
 void AGMC_Aggregator::UnregisterPawn(APawn* Pawn)
 {
   const int32 NumRemoved = Pawns.Remove(Pawn);
+  gmc_ck(NumRemoved <= 1)
+}
+
+void AGMC_Aggregator::UnregisterMovementComponent(UMovementComponent* MovementComponent)
+{
+  const int32 NumRemoved = MovementComponents.Remove(MovementComponent);
   gmc_ck(NumRemoved <= 1)
 }
 
@@ -369,20 +369,20 @@ void AGMC_Aggregator::SortControllers()
   });
 }
 
-void AGMC_Aggregator::SortMovementComponents()
-{
-  Algo::Sort(
-    MovementComponents,
-    [&](const UMovementComponent* A, const UMovementComponent* B) { return GetMovementComponentOrderNumber(A) < GetMovementComponentOrderNumber(B); }
-  );
-}
-
 void AGMC_Aggregator::SortPawns()
 {
   Algo::Sort(
     Pawns,
     [&](const APawn* A, const APawn* B) { return GetPawnOrderNumber(A) < GetPawnOrderNumber(B);
   });
+}
+
+void AGMC_Aggregator::SortMovementComponents()
+{
+  Algo::Sort(
+    MovementComponents,
+    [&](const UMovementComponent* A, const UMovementComponent* B) { return GetMovementComponentOrderNumber(A) < GetMovementComponentOrderNumber(B); }
+  );
 }
 
 void AGMC_Aggregator::SortRollbackActors()
@@ -406,14 +406,14 @@ const TArray<AController*>& AGMC_Aggregator::GetControllers() const
   return Controllers;
 }
 
-const TArray<UMovementComponent*>& AGMC_Aggregator::GetMovementComponents() const
-{
-  return MovementComponents;
-}
-
 const TArray<APawn*>& AGMC_Aggregator::GetPawns() const
 {
   return Pawns;
+}
+
+const TArray<UMovementComponent*>& AGMC_Aggregator::GetMovementComponents() const
+{
+  return MovementComponents;
 }
 
 const TArray<AGMC_RollbackActor*>& AGMC_Aggregator::GetRollbackActors() const
@@ -433,14 +433,14 @@ void AGMC_Aggregator::SetTickFunctionsEnabled(bool bInEnable)
     Controller->PrimaryActorTick.SetTickFunctionEnable(bInEnable);
   }
 
-  for (const auto& MovementComponent : MovementComponents)
-  {
-    MovementComponent->PrimaryComponentTick.SetTickFunctionEnable(bInEnable);
-  }
-
   for (const auto& Pawn : Pawns)
   {
     Pawn->PrimaryActorTick.SetTickFunctionEnable(bInEnable);
+  }
+
+  for (const auto& MovementComponent : MovementComponents)
+  {
+    MovementComponent->PrimaryComponentTick.SetTickFunctionEnable(bInEnable);
   }
 
   for (const auto& RollbackActor : RollbackActors)
@@ -495,6 +495,20 @@ int32 AGMC_Aggregator::GetControllerOrderNumber(const AController* Controller)
   return OtherController;
 }
 
+int32 AGMC_Aggregator::GetPawnOrderNumber(const APawn* Pawn)
+{
+  // Tick order:
+  int32 GMCPawn = 0;
+  int32 OtherPawn = 1;
+
+  if (Cast<AGMC_Pawn>(Pawn))
+  {
+    return GMCPawn;
+  }
+
+  return OtherPawn;
+}
+
 int32 AGMC_Aggregator::GetMovementComponentOrderNumber(const UMovementComponent* MovementComponent)
 {
   // Tick order:
@@ -529,20 +543,6 @@ int32 AGMC_Aggregator::GetMovementComponentOrderNumber(const UMovementComponent*
   }
 
   return OtherMovementComponent;
-}
-
-int32 AGMC_Aggregator::GetPawnOrderNumber(const APawn* Pawn)
-{
-  // Tick order:
-  int32 GMCPawn = 0;
-  int32 OtherPawn = 1;
-
-  if (Cast<AGMC_Pawn>(Pawn))
-  {
-    return GMCPawn;
-  }
-
-  return OtherPawn;
 }
 
 int32 AGMC_Aggregator::GetRollbackActorOrderNumber(const AGMC_RollbackActor* RollbackActor)

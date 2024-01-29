@@ -31,19 +31,19 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void RegisterController(class AController* Controller);
 
-  /// Add a movement component to the aggregator.
-  ///
-  /// @param        MovementComponent    The object to add.
-  /// @returns      void
-  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void RegisterMovementComponent(class UMovementComponent* MovementComponent);
-
   /// Add a pawn actor to the aggregator.
   ///
   /// @param        Pawn    The object to add.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void RegisterPawn(class APawn* Pawn);
+
+  /// Add a movement component to the aggregator.
+  ///
+  /// @param        MovementComponent    The object to add.
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void RegisterMovementComponent(class UMovementComponent* MovementComponent);
 
   /// Add a rollback actor to the aggregator.
   ///
@@ -66,19 +66,19 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void UnregisterController(AController* Controller);
 
-  /// Remove a movement component from the aggregator.
-  ///
-  /// @param        MovementComponent    The object to remove.
-  /// @returns      void
-  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void UnregisterMovementComponent(UMovementComponent* MovementComponent);
-
   /// Remove a pawn actor from the aggregator.
   ///
   /// @param        Pawn    The object to remove.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void UnregisterPawn(APawn* Pawn);
+
+  /// Remove a movement component from the aggregator.
+  ///
+  /// @param        MovementComponent    The object to remove.
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void UnregisterMovementComponent(UMovementComponent* MovementComponent);
 
   /// Remove a rollback actor from the aggregator.
   ///
@@ -100,17 +100,17 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void SortControllers();
 
-  /// Sorts all currently registered movement components.
-  ///
-  /// @returns      void
-  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SortMovementComponents();
-
   /// Sorts all currently registered pawn actors.
   ///
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void SortPawns();
+
+  /// Sorts all currently registered movement components.
+  ///
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void SortMovementComponents();
 
   /// Sorts all currently registered rollback actors.
   ///
@@ -130,17 +130,17 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   const TArray<AController*>& GetControllers() const;
 
-  /// Returns all currently registered movement components.
-  ///
-  /// @returns      const TArray<UMovementComponent*>&    The array containing all registered movement components.
-  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  const TArray<UMovementComponent*>& GetMovementComponents() const;
-
   /// Returns all currently registered pawn actors.
   ///
   /// @returns      const TArray<APawn*>&    The array containing all registered pawn actors.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   const TArray<APawn*>& GetPawns() const;
+
+  /// Returns all currently registered movement components.
+  ///
+  /// @returns      const TArray<UMovementComponent*>&    The array containing all registered movement components.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  const TArray<UMovementComponent*>& GetMovementComponents() const;
 
   /// Returns all currently registered rollback actors.
   ///
@@ -182,19 +182,19 @@ protected:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual int32 GetControllerOrderNumber(const AController* Controller);
 
-  /// Determines the order number of the passed movement component.
-  ///
-  /// @param        MovementComponent    The object to get the order number for.
-  /// @returns      int32                The order number of the passed object.
-  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  virtual int32 GetMovementComponentOrderNumber(const UMovementComponent* MovementComponent);
-
   /// Determines the order number of the passed pawn.
   ///
   /// @param        Pawn     The object to get the order number for.
   /// @returns      int32    The order number of the passed object.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual int32 GetPawnOrderNumber(const APawn* Pawn);
+
+  /// Determines the order number of the passed movement component.
+  ///
+  /// @param        MovementComponent    The object to get the order number for.
+  /// @returns      int32                The order number of the passed object.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual int32 GetMovementComponentOrderNumber(const UMovementComponent* MovementComponent);
 
   /// Determines the order number of the passed rollback actor.
   ///
@@ -215,12 +215,12 @@ protected:
   TArray<AController*> Controllers{};
 
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
-  /// Holds all currently registered movement components.
-  TArray<UMovementComponent*> MovementComponents{};
-
-  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
   /// Holds all currently registered pawns.
   TArray<APawn*> Pawns{};
+
+  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
+  /// Holds all currently registered movement components.
+  TArray<UMovementComponent*> MovementComponents{};
 
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
   /// Holds all currently registered rollback actors.

@@ -2321,4 +2321,8 @@ EGMC_SyncType TSyncType<FGameplayTagContainer>::GetTypeEnum(::UGMC_ReplicationCm
   return EGMC_SyncType::GameplayTagContainer;
 }
 
+#ifdef GMC_ENABLE_USER_SYNC_TYPES
+#include GMC_USER_INCLUDE_PATH_TYPE_IMPL
+#endif
+
 }

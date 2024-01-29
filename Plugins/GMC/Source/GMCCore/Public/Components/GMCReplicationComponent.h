@@ -413,13 +413,13 @@ protected:
     int32 DeviatingSyncTypeIndex,
     const FGMC_PawnState& DeviatingState,
     const FGMC_PawnState& ServerState
-  ) const;
+  );
   virtual bool CL_IsAllowedToReplay_Implementation(
     EGMC_SyncType DeviatingSyncType,
     int32 DeviatingSyncTypeIndex,
     const FGMC_PawnState& DeviatingClientState,
     const FGMC_PawnState& ServerState
-  ) const { return true; }
+  ) { return true; }
 
   /// Called after a smoothed client correction has finished.
   ///
@@ -834,6 +834,18 @@ public:
   /// @returns      bool    True if we are currently executing a client replay, false otherwise.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   bool CL_IsReplaying() const;
+
+  /// Returns the history index of the move that is current being replayed (only valid during a client replay).
+  ///
+  /// @returns      int32    The index of the move that is currently being replayed (-1 if no replay is currently being performed).
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  int32 CL_GetCurrentReplayMoveIndex() const;
+
+  /// Returns the move that is current being replayed. This function must not be called outside of a client replay.
+  ///
+  /// @returns      const FGMC_Move&    The move that is currently being replayed.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  const FGMC_Move& CL_GetCurrentReplayMove() const;
 
   /// Tells us whether we are currently executing remote moves from a client on the server. Always returns false on a client.
   ///
@@ -1648,6 +1660,11 @@ public:
   /// @returns      bool                True if there's still more capacity in the buffer than the protection margin specified, false otherwise.
   static bool CheckReliableBuffer(AActor* Owner, int32 ProtectionMargin);
 
+  /// Returns all data associated with any sync tags for non-default initialization of sync types.
+  ///
+  /// @returns      FGMC_SyncTasgData    The settings to use for this component.
+  FGMC_SyncTagsData GetSyncTagsData() const;
+
 protected:
 
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
@@ -1716,11 +1733,6 @@ protected:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual bool IsReadyForPlay() const;
 
-private:
-
-  UPROPERTY(Transient, DuplicateTransient)
-  TObjectPtr<USceneComponent> ActorBase{nullptr};
-
   struct FComponentStatus
   {
     bool bGMCEnabled{true};
@@ -1760,6 +1772,11 @@ private:
   };
 
   FComponentStatus ComponentStatus{};
+
+private:
+
+  UPROPERTY(Transient, DuplicateTransient)
+  TObjectPtr<USceneComponent> ActorBase{nullptr};
 
   FVector ExecuteMove(
     const FGMC_PawnState& InputState,
@@ -2058,6 +2075,11 @@ protected:
   /// @returns      bool    True if the client should use smooth corrections, false otherwise.
   virtual bool CL_ShouldUseSmoothCorrections() const;
 
+  /// Whether to force a deferred camera manager update for the autonomous proxy.
+  ///
+  /// @returns      bool    True if the camera manager update for the autonomous proxy should be deferred to the end of the world tick, false otherwise.
+  virtual bool ShouldDeferAutonomousProxyCameraManagerUpdate() const;
+
   /// Called when the buffer for non-predicted autonomous proxies is initialized.
   ///
   /// @param        Buffer    The currently buffered state.
@@ -2091,6 +2113,8 @@ private:
 
     bool bIsReplaying{false};
 
+    int32 ReplayMoveIdx{-1};
+
     bool bDoNotCombineNextMove{false};
 
     bool bIsRolledBack{false};
@@ -2113,6 +2137,7 @@ private:
       LastReceivedMoveTimestamp = 0.;
       LastValidRepUpdateTime = 0.;
       bIsReplaying = false;
+      ReplayMoveIdx = -1;
       bDoNotCombineNextMove = false;
       bIsRolledBack = false;
     }
@@ -2224,7 +2249,7 @@ private:
 
   bool CL_CheckPhysicsSettingsSynced(const FGMC_Move& ReplicatedMove) const;
 
-  bool CL_ShouldReplay(const FGMC_Move& APMove, const FGMC_Move& SourceMove) const;
+  bool CL_ShouldReplay(const FGMC_Move& APMove, const FGMC_Move& SourceMove);
 
   void CL_ReplayMoves();
 
@@ -2820,7 +2845,7 @@ private:
 
     FGMC_PawnState ExtrapolationRecoveryStartState{};
 
-    void PreTick(const UGMC_ReplicationCmp* const Outer);
+    void PreTick(UGMC_ReplicationCmp* const Outer);
 
     void Reset()
     {
@@ -3047,8 +3072,7 @@ public:
   float MaxCombinedDeltaTime{0.03334f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client")
-  /// Client-auth values may be affected by a replay when the actor base changes. Setting this to true will restore all client-auth default sync types after a
-  /// a replay to the values they had before the correction.
+  /// If true, any client-auth default sync types will be restored to the values they had before the correction after a replay.
   bool bRestoreClientAuthValuesAfterReplay{true};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client")
@@ -3216,7 +3240,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Bit.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3236,7 +3260,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.UnsignedInt4.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3256,7 +3280,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.UnsignedInt8.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3276,7 +3300,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Int32.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3296,7 +3320,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Float.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3316,7 +3340,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Float2Dec.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3336,7 +3360,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Double.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     return BindingIndex;
@@ -3355,7 +3379,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Double2Dec.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3375,7 +3399,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.DoubleAsFloat.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3395,7 +3419,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Vector2Double2Dec.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3415,7 +3439,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Vector3Double2Dec.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3435,7 +3459,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Rotator3Double2Dec.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3455,7 +3479,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.ActorReference.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3475,7 +3499,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.ActorComponentReference.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3495,7 +3519,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.AnimMontageReference.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3515,7 +3539,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.Name.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3535,7 +3559,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.GameplayTag.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)
@@ -3555,7 +3579,7 @@ protected:
     int32 BindingIndex = -1;
     AliasData.GameplayTagContainer.BindMember(
       VariableToBind,
-      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation, EGMC_AdditionalSyncSettings::None),
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
       BindingIndex
     );
     gmc_ck(BindingIndex >= 0)

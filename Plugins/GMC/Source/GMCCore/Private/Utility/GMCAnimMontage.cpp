@@ -565,6 +565,10 @@ bool FGMC_AnimMontageInstance::Advance(
 
       if (NextSectionIndex == INDEX_NONE)
       {
+        float CurrentSectionStartTime{0.f};
+        float CurrentSectionEndTime{0.f};
+        Montage->GetSectionStartAndEndTime(MontageSubStepper.GetCurrentSectionIndex(), CurrentSectionStartTime, CurrentSectionEndTime);
+        Position = MontageSubStepper.GetPlayingForward() ? CurrentSectionEndTime - UE_KINDA_SMALL_NUMBER : CurrentSectionStartTime;
         return true;
       }
 

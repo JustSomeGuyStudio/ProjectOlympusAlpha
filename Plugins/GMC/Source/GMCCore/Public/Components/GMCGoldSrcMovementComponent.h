@@ -36,6 +36,7 @@ public:
   FVector ComputeSlideVector(const FVector& Delta, float Time, const FVector& Normal, const FHitResult& Hit) const override;
   float SlideAlongSurface(const FVector& Delta, float Time, const FVector& Normal, FHitResult& Hit, bool bHandleImpact = false) override;
   void TwoWallAdjust(FVector& Delta, const FHitResult& Hit, const FVector& OldHitNormal) const override;
+  float GetMaxSpeed() const override;
   ///~ End UMovementComponent Interface
 
   ///~ Begin UNavMovementComponent Interface
@@ -149,7 +150,6 @@ protected:
   float GetInputAcceleration() const override;
   float GetBrakingDeceleration() const override;
   float GetOverMaxSpeedDeceleration() const override;
-  float GetMaxSpeed() const override;
   void AdjustVelocityFromHitAirborne_Implementation(const FHitResult& Hit, float DeltaSeconds) override;
   void ProcessLanded(const FHitResult& Hit, FGMC_FloorParams& Floor, bool bUpdateFloor, float DeltaSeconds) override;
   void OnLanded_Implementation(const FVector& ImpactVelocity) override;

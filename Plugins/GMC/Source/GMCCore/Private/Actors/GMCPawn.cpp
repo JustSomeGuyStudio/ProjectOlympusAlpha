@@ -4,7 +4,7 @@
 #include "GMCAggregator.h"
 #include "GMCLog.h"
 
-AGMC_Pawn::AGMC_Pawn()
+AGMC_Pawn::AGMC_Pawn(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   PrimaryActorTick.bCanEverTick = true;
   SpawnCollisionHandlingMethod = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
@@ -84,13 +84,14 @@ void AGMC_Pawn::InitializeMoves()
   SPMove.NetInfo.OwningComponent = ReplicationComponent;
 
   const auto& ReplicationSettings = ReplicationComponent->ReplicationSettings;
+  const auto& SyncTagsData = ReplicationComponent->GetSyncTagsData();
   const auto& AliasData = ReplicationComponent->AliasData;
-  InitializeSyncData(LocalMove.InputState, ReplicationSettings, AliasData, ESimState::Input, ESimType::LocalMove, ReplicationComponent);
-  InitializeSyncData(LocalMove.OutputState, ReplicationSettings, AliasData, ESimState::Output, ESimType::LocalMove, ReplicationComponent);
-  InitializeSyncData(APMove.InputState, ReplicationSettings, AliasData, ESimState::Input, ESimType::APMove, ReplicationComponent);
-  InitializeSyncData(APMove.OutputState, ReplicationSettings, AliasData, ESimState::Output, ESimType::APMove, ReplicationComponent);
-  InitializeSyncData(SPMove.InputState, ReplicationSettings, AliasData, ESimState::Input, ESimType::SPMove, ReplicationComponent);
-  InitializeSyncData(SPMove.OutputState, ReplicationSettings, AliasData, ESimState::Output, ESimType::SPMove, ReplicationComponent);
+  InitializeSyncData(LocalMove.InputState, ReplicationSettings, SyncTagsData, AliasData, ESimState::Input, ESimType::LocalMove, ReplicationComponent);
+  InitializeSyncData(LocalMove.OutputState, ReplicationSettings, SyncTagsData, AliasData, ESimState::Output, ESimType::LocalMove, ReplicationComponent);
+  InitializeSyncData(APMove.InputState, ReplicationSettings, SyncTagsData, AliasData, ESimState::Input, ESimType::APMove, ReplicationComponent);
+  InitializeSyncData(APMove.OutputState, ReplicationSettings, SyncTagsData, AliasData, ESimState::Output, ESimType::APMove, ReplicationComponent);
+  InitializeSyncData(SPMove.InputState, ReplicationSettings, SyncTagsData, AliasData, ESimState::Input, ESimType::SPMove, ReplicationComponent);
+  InitializeSyncData(SPMove.OutputState, ReplicationSettings, SyncTagsData, AliasData, ESimState::Output, ESimType::SPMove, ReplicationComponent);
 }
 
 bool AGMC_Pawn::IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const
@@ -143,11 +144,24 @@ void AGMC_Pawn::NotifyControllerChanged()
     ReplicationComponent->ClearTransientData(true);
   }
 
+  // Must be called before the parent implementation.
+  OnControllerChanged(Controller, PreviousController);
+
   Super::NotifyControllerChanged();
+}
+
+void AGMC_Pawn::OnControllerChanged_Implementation(AController* NewController, AController* OldController)
+{
+  if (NewController)
+  {
+    NewController->SetControlRotation(GetActorRotation());
+  }
 }
 
 void AGMC_Pawn::PossessedBy(AController* NewController)
 {
+  // Only called on the server.
+
   if (IsValid(ReplicationComponent))
   {
     ReplicationComponent->ClearTransientData(true);
@@ -158,10 +172,11 @@ void AGMC_Pawn::PossessedBy(AController* NewController)
 
 void AGMC_Pawn::UnPossessed()
 {
+  // Only called on the server.
+
   if (IsValid(ReplicationComponent))
   {
     ReplicationComponent->ClearTransientData(true);
-    ReplicationComponent->SimulatedControlRotation = ReplicationComponent->GetControllerRotation_GMC();
   }
 
   Super::UnPossessed();

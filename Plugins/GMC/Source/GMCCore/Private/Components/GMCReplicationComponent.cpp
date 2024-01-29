@@ -245,11 +245,10 @@ void UGMC_ReplicationCmp::OnWorldTickEnd(UWorld* World, ELevelTick TickType, flo
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, WorldTickEnd, DeltaTime);
 
   // Call after WorldTickEnd event in case the pawn state was changed in it.
-  if (IsNonPredictedAutonomousProxy())
+  if (const auto& Controller = Cast<AGMC_PlayerController>(PawnOwner->GetController()))
   {
-    if (const auto& Controller = Cast<AGMC_PlayerController>(PawnOwner->GetController()))
+    if (Controller->WasAutonomousProxyCameraManagerUpdateDeferred())
     {
-      gmc_ck(Controller->WasAutonomousProxyCameraManagerUpdateDeferred())
       CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, Controller, CL_ManualUpdateCamera, DeltaTime);
     }
   }
@@ -1070,7 +1069,13 @@ void UGMC_ReplicationCmp::CL_OnRepAPMove()
 
     CL_PreAdoptStateForReplay(APMove(), SourceMove);
     ProcessSyncData(APMove().OutputState, {DataOp::Apply}, AliasData, bUseRelativeValuesForPrediction, this);
-    CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnSyncDataApplied, APMove().OutputState, EGMC_NetContext::LocalClientPawn_PreReplayMoveExecution);
+    CALL_NATIVE_EVENT_CONDITIONAL(
+      bNoBlueprintEvents,
+      this,
+      OnSyncDataApplied,
+      APMove().OutputState,
+      EGMC_NetContext::LocalClientPawn_ServerStateAdoptedForReplay
+    );
     CL_PostAdoptStateForReplay(APMove(), SourceMove);
 
     DEBUG_NET_CORRECTION_UPDATED_CLIENT_ACTOR_LOCATION
@@ -1549,7 +1554,7 @@ void UGMC_ReplicationCmp::ClearTransientData(bool bResetMoves)
   UniformSimulationParams.Reset();
   CumulativeSimulationParams.Reset();
 
-  SimulatedControlRotation = FRotator::ZeroRotator;
+  // Keep the value of SimulatedControlRotation for consistency during controller changes.
 }
 
 void UGMC_ReplicationCmp::ManagePrerequisiteTicks()
@@ -2286,8 +2291,24 @@ FGMC_Move UGMC_ReplicationCmp::SV_CreateProxyMove(double Timestamp, float DeltaT
   ProxyMoveMetaData.bPredictedClientMove = bUseClientPrediction;
 
   FGMC_Move ProxyMove{};
-  InitializeSyncData(ProxyMove.InputState, ReplicationSettings, AliasData, GMCReplication::ESimState::Input, GMCReplication::ESimType::LocalMove, this);
-  InitializeSyncData(ProxyMove.OutputState, ReplicationSettings, AliasData, GMCReplication::ESimState::Output, GMCReplication::ESimType::LocalMove, this);
+  InitializeSyncData(
+    ProxyMove.InputState,
+    ReplicationSettings,
+    GetSyncTagsData(),
+    AliasData,
+    GMCReplication::ESimState::Input,
+    GMCReplication::ESimType::LocalMove,
+    this
+  );
+  InitializeSyncData(
+    ProxyMove.OutputState,
+    ReplicationSettings,
+    GetSyncTagsData(),
+    AliasData,
+    GMCReplication::ESimState::Output,
+    GMCReplication::ESimType::LocalMove,
+    this
+  );
   ProxyMove.NetInfo = ProxyMoveNetInfo;
   ProxyMove.MetaData = ProxyMoveMetaData;
 
@@ -3039,6 +3060,11 @@ bool UGMC_ReplicationCmp::CheckReliableBuffer(AActor* Owner, int32 ProtectionMar
   return false;
 }
 
+FGMC_SyncTagsData UGMC_ReplicationCmp::GetSyncTagsData() const
+{
+  return FGMC_SyncTagsData{};
+}
+
 bool UGMC_ReplicationCmp::CL_MaintainPredictionHistory(const FGMC_Move& NewMove, bool& bOutStartedNewMove, bool& bOutPredictionHistoryFull)
 {
   SCOPE_CYCLE_COUNTER(STAT_CL_MaintainPredictionHistory)
@@ -3323,6 +3349,7 @@ void UGMC_ReplicationCmp::CL_ReplayMoves()
   gmc_ck(IsAutonomousProxy())
   gmc_ck(bUseClientPrediction)
   gmc_ck(!CL_MoveExecutionAux.bIsReplaying)
+  gmc_ck(CL_MoveExecutionAux.ReplayMoveIdx == -1)
 
   if (MoveHistory.Num() > 0)
   {
@@ -3352,6 +3379,8 @@ void UGMC_ReplicationCmp::CL_ReplayMoves()
 
     for (int32 Index = 0; Index < MoveHistory.Num(); ++Index)
     {
+      CL_MoveExecutionAux.ReplayMoveIdx = Index;
+
       auto& Move = MoveHistory[Index];
 
       CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, CL_PreReplayMoveExecution, Move);
@@ -3373,6 +3402,7 @@ void UGMC_ReplicationCmp::CL_ReplayMoves()
       }
 
       ProcessSyncData(Move.InputState, ReplayDirective, AliasData, bUseRelativeValuesForPrediction, this);
+      CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnSyncDataApplied, Move.InputState, EGMC_NetContext::LocalClientPawn_PreReplayMoveExecution);
 
       ExecuteMove(
         Move.InputState,
@@ -3392,6 +3422,8 @@ void UGMC_ReplicationCmp::CL_ReplayMoves()
       CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, CL_PostReplayMoveExecution, Move);
     }
 
+    CL_MoveExecutionAux.ReplayMoveIdx = -1;
+
     CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, CL_PostReplay);
 
     if (bRollBackClientPawns)
@@ -3410,7 +3442,7 @@ void UGMC_ReplicationCmp::CL_ReplayMoves()
   }
 }
 
-bool UGMC_ReplicationCmp::CL_ShouldReplay(const FGMC_Move& ReceivedMove, const FGMC_Move& SourceMove) const
+bool UGMC_ReplicationCmp::CL_ShouldReplay(const FGMC_Move& ReceivedMove, const FGMC_Move& SourceMove)
 {
   SCOPE_CYCLE_COUNTER(STAT_CL_ShouldReplay)
 
@@ -3517,6 +3549,11 @@ bool UGMC_ReplicationCmp::CL_ShouldUseSmoothCorrections() const
   return SmoothCorrection.bEnable && !bAlwaysReplay && IsPredictedAutonomousProxy();
 }
 
+bool UGMC_ReplicationCmp::ShouldDeferAutonomousProxyCameraManagerUpdate() const
+{
+  return (CL_ShouldUseSmoothCorrections() && CL_SmoothCorrection.HasData()) || IsNonPredictedAutonomousProxy();
+}
+
 void UGMC_ReplicationCmp::CL_HandleSmoothCorrectionOnReplayStart()
 {
   if (CL_ShouldUseSmoothCorrections())
@@ -3580,12 +3617,6 @@ void UGMC_ReplicationCmp::CL_HandleSmoothCorrectionOnWorldTickEnd(float DeltaTim
 
   // Set the pawn to the smoothed transform for display.
   CL_SmoothCorrection.SwapTransform(this);
-
-  if (const auto& Controller = Cast<AGMC_PlayerController>(PawnOwner->GetController()))
-  {
-    gmc_ck(Controller->WasAutonomousProxyCameraManagerUpdateDeferred())
-    CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, Controller, CL_ManualUpdateCamera, DeltaTime);
-  }
 }
 
 FGMC_PawnState& UGMC_ReplicationCmp::CL_NoPredictionBuffer()
@@ -3762,6 +3793,7 @@ void UGMC_ReplicationCmp::SmoothMatchLatest(
       DataFilter::SV_ReplicateForSimulation,
       DataFilterMode::Exclusive,
       ReplicationSettings,
+      GetSyncTagsData(),
       AliasData,
       this
     );
@@ -3840,6 +3872,7 @@ void UGMC_ReplicationCmp::SmoothDelay(
         DataFilter::SV_ReplicateForSimulation,
         DataFilterMode::Exclusive,
         ReplicationSettings,
+        GetSyncTagsData(),
         AliasData,
         this
       );
@@ -3875,6 +3908,7 @@ void UGMC_ReplicationCmp::SmoothDelay(
         DataFilter::SV_ReplicateForSimulation,
         DataFilterMode::Exclusive,
         ReplicationSettings,
+        GetSyncTagsData(),
         AliasData,
         this
       );
@@ -3987,6 +4021,7 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
     DataFilter::SV_ReplicateForSimulation,
     DataFilterMode::Exclusive,
     ReplicationSettings,
+    GetSyncTagsData(),
     AliasData,
     this
   );
@@ -4476,7 +4511,15 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
     }
 
     FGMC_PawnState PreExtrapolationState{};
-    InitializeSyncData(PreExtrapolationState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, this);
+    InitializeSyncData(
+      PreExtrapolationState,
+      ReplicationSettings,
+      GetSyncTagsData(),
+      AliasData,
+      GMCReplication::ESimState::None,
+      GMCReplication::ESimType::None,
+      this
+    );
     ProcessSyncData(PreExtrapolationState, {DataOp::Save}, AliasData, false, this);
 
     const auto SetExtrapParams = [&](int32 TargetIdx, double SimTime, bool bCumulativeUpdate, bool bServerAuthPhysics)
@@ -4733,6 +4776,7 @@ void UGMC_ReplicationCmp::ComputeSmoothingParams(
       InitializeSyncData(
         MatchLatestParamsAux.SimulationStartState,
         ReplicationSettings,
+        GetSyncTagsData(),
         AliasData,
         GMCReplication::ESimState::None,
         GMCReplication::ESimType::None,
@@ -5092,7 +5136,15 @@ FGMC_PawnState UGMC_ReplicationCmp::GetPawnState(bool bUseRelative) const
 {
   FGMC_PawnState CurrentState{};
   UGMC_ReplicationCmp* MutableThis = const_cast<UGMC_ReplicationCmp*>(this);
-  InitializeSyncData(CurrentState, ReplicationSettings, AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, MutableThis);
+  InitializeSyncData(
+    CurrentState,
+    ReplicationSettings,
+    GetSyncTagsData(),
+    AliasData,
+    GMCReplication::ESimState::None,
+    GMCReplication::ESimType::None,
+    MutableThis
+  );
   ProcessSyncData(CurrentState, {DataOp::Save}, AliasData, bUseRelative, MutableThis);
   return CurrentState;
 }
@@ -6125,6 +6177,20 @@ AGMC_Pawn* UGMC_ReplicationCmp::GetGMCPawnOwner() const
 bool UGMC_ReplicationCmp::CL_IsReplaying() const
 {
   return CL_MoveExecutionAux.bIsReplaying;
+}
+
+int32 UGMC_ReplicationCmp::CL_GetCurrentReplayMoveIndex() const
+{
+  gmc_ck(CL_IsReplaying())
+  gmc_ck(CL_MoveExecutionAux.ReplayMoveIdx >= 0 && CL_MoveExecutionAux.ReplayMoveIdx < MoveHistory.Num())
+  return CL_MoveExecutionAux.ReplayMoveIdx;
+}
+
+const FGMC_Move& UGMC_ReplicationCmp::CL_GetCurrentReplayMove() const
+{
+  gmc_ck(CL_IsReplaying())
+  gmc_ck(CL_MoveExecutionAux.ReplayMoveIdx >= 0 && CL_MoveExecutionAux.ReplayMoveIdx < MoveHistory.Num())
+  return MoveHistory[CL_MoveExecutionAux.ReplayMoveIdx];
 }
 
 bool UGMC_ReplicationCmp::SV_IsExecutingRemoteMoves() const
@@ -7835,7 +7901,15 @@ bool FGMC_ClientAuthPhysicsSettings::NetSerialize(FArchive& Ar, UPackageMap* Map
 void UGMC_ReplicationCmp::FSyncDataSwapBuffer::Initialize(bool bUseRelative, UGMC_ReplicationCmp* const Outer)
 {
   gmc_ck(!bInitialized)
-  InitializeSyncData(Buffer, Outer->ReplicationSettings, Outer->AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, Outer);
+  InitializeSyncData(
+    Buffer,
+    Outer->ReplicationSettings,
+    Outer->GetSyncTagsData(),
+    Outer->AliasData,
+    GMCReplication::ESimState::None,
+    GMCReplication::ESimType::None,
+    Outer
+  );
   ProcessSyncData(Buffer, {DataOp::Save}, Outer->AliasData, bUseRelative, Outer);
   bInitialized = true;
 }
@@ -7843,7 +7917,15 @@ void UGMC_ReplicationCmp::FSyncDataSwapBuffer::Initialize(bool bUseRelative, UGM
 void UGMC_ReplicationCmp::FSyncDataSwapBuffer::Initialize(const FGMC_PawnState& InitState, UGMC_ReplicationCmp* const Outer)
 {
   gmc_ck(!bInitialized)
-  InitializeSyncData(Buffer, Outer->ReplicationSettings, Outer->AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, Outer);
+  InitializeSyncData(
+    Buffer,
+    Outer->ReplicationSettings,
+    Outer->GetSyncTagsData(),
+    Outer->AliasData,
+    GMCReplication::ESimState::None,
+    GMCReplication::ESimType::None,
+    Outer
+  );
   Buffer = InitState;
   bInitialized = true;
 }
@@ -8084,6 +8166,7 @@ FGMC_Move& UGMC_ReplicationCmp::FClientMoveExecutionAux::GetDefaultMove(const UG
   InitializeSyncData(
     DefaultMove.InputState,
     Outer->ReplicationSettings,
+    Outer->GetSyncTagsData(),
     Outer->AliasData,
     GMCReplication::ESimState::None,
     GMCReplication::ESimType::None,
@@ -8093,6 +8176,7 @@ FGMC_Move& UGMC_ReplicationCmp::FClientMoveExecutionAux::GetDefaultMove(const UG
   InitializeSyncData(
     DefaultMove.OutputState,
     Outer->ReplicationSettings,
+    Outer->GetSyncTagsData(),
     Outer->AliasData,
     GMCReplication::ESimState::None,
     GMCReplication::ESimType::None,
@@ -8224,16 +8308,33 @@ void UGMC_ReplicationCmp::FSmoothClientCorrection::SaveTransform(const UGMC_Repl
   Transform.ControlRotation = Outer->GetControllerRotation_GMC();
 }
 
-void UGMC_ReplicationCmp::FSimulationAux::PreTick(const UGMC_ReplicationCmp* const Outer)
+void UGMC_ReplicationCmp::FSimulationAux::PreTick(UGMC_ReplicationCmp* const Outer)
 {
   bWasExtrapolatingLastUpdate = bIsExtrapolating;
   bIsExtrapolating = false;
+
+  if (const auto& OwningPawn = Outer->PawnOwner)
+  {
+    if (const auto& Controller = OwningPawn->GetController())
+    {
+      // Keep the simulated control rotation in sync with the actual controller value.
+      Outer->SimulatedControlRotation = Controller->GetControlRotation();
+    }
+  }
 }
 
 void UGMC_ReplicationCmp::FRollbackRestoreBuffer::Initialize(UGMC_ReplicationCmp* const Outer)
 {
   gmc_ck(!bInitialized)
-  InitializeSyncData(Buffer, Outer->ReplicationSettings, Outer->AliasData, GMCReplication::ESimState::None, GMCReplication::ESimType::None, Outer);
+  InitializeSyncData(
+    Buffer,
+    Outer->ReplicationSettings,
+    Outer->GetSyncTagsData(),
+    Outer->AliasData,
+    GMCReplication::ESimState::None,
+    GMCReplication::ESimType::None,
+    Outer
+  );
   bInitialized = true;
 }
 

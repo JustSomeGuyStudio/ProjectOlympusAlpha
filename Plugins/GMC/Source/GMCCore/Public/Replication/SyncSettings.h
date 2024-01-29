@@ -204,7 +204,7 @@ enum class EGMC_SimulationMode : uint8
   None UMETA(DisplayName = "None", ToolTip = "Not replicated for simulation."),
 };
 
-enum class EGMC_AdditionalSyncSettings : uint8
+enum class EGMC_SyncTag : uint8
 {
   None,
 };
@@ -215,7 +215,7 @@ struct FGMC_DefaultPredictionSettings
   GENERATED_BODY()
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Replication Settings")
-  EGMC_PredictionMode ActorBase{EGMC_PredictionMode::ServerAuth_Output_ClientValidated};
+  EGMC_PredictionMode ActorBase{EGMC_PredictionMode::ServerAuth_Output_ServerValidated};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Replication Settings")
   EGMC_PredictionMode LinearVelocity{EGMC_PredictionMode::ServerAuth_Output_ClientValidated};
@@ -365,21 +365,21 @@ struct FGMC_DefaultErrorTolerances
   float ControlRotation{2.f};
 };
 
-struct FGMC_DefaultAdditionalSyncSettings
+struct FGMC_SyncTags
 {
-  EGMC_AdditionalSyncSettings ActorBase{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag ActorBase{EGMC_SyncTag::None};
 
-  EGMC_AdditionalSyncSettings LinearVelocity{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag LinearVelocity{EGMC_SyncTag::None};
 
-  EGMC_AdditionalSyncSettings AngularVelocity{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag AngularVelocity{EGMC_SyncTag::None};
 
-  EGMC_AdditionalSyncSettings ActorLocation{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag ActorLocation{EGMC_SyncTag::None};
 
-  EGMC_AdditionalSyncSettings ActorRotation{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag ActorRotation{EGMC_SyncTag::None};
 
-  EGMC_AdditionalSyncSettings ActorScale{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag ActorScale{EGMC_SyncTag::None};
 
-  EGMC_AdditionalSyncSettings ControlRotation{EGMC_AdditionalSyncSettings::None};
+  EGMC_SyncTag ControlRotation{EGMC_SyncTag::None};
 };
 
 USTRUCT(BlueprintType)
@@ -405,7 +405,7 @@ struct FGMC_DefaultReplicationSettings
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Replication Settings")
   FGMC_DefaultErrorTolerances DefaultErrorTolerances{};
 
-  FGMC_DefaultAdditionalSyncSettings DefaultAdditionalSyncSettings{};
+  FGMC_SyncTags SyncTags{};
 };
 
 inline void SetPredictionMode(EGMC_PredictionMode Mode, GMCReplication::FSyncSettings& Settings)
@@ -557,27 +557,28 @@ inline void SetInterpolationFunction(EGMC_InterpolationFunction InterpFunc, GMCR
   Settings.LocalSettings.InterpFunc = static_cast<uint8>(InterpFunc);
 }
 
-inline void SetAdditionalSyncSettings(EGMC_AdditionalSyncSettings AdditionalSettings, GMCReplication::FSyncSettings& Settings)
+struct FGMC_PackedReplicationSettings
 {
-  switch (AdditionalSettings)
-  {
-    case EGMC_AdditionalSyncSettings::None:
-    {
-      break;
-    }
-    default:
-    {
-      gmc_ckne();
-    }
-  }
+  EGMC_PredictionMode PredictionMode{};
+  EGMC_CombineMode CombineMode{};
+  EGMC_SimulationMode SimulationMode{};
+  EGMC_InterpolationFunction InterpolationFunction{};
+};
+
+struct FGMC_SyncTagsData
+{};
+
+inline FGMC_PackedReplicationSettings GetNonDefaultReplicationSettings(EGMC_SyncTag Tag, const FGMC_SyncTagsData& Data)
+{
+  gmc_ckne()
+  return FGMC_PackedReplicationSettings{};
 }
 
 inline GMCReplication::FSyncSettings TranslateToSyncSettings(
   EGMC_PredictionMode PredictionMode,
   EGMC_CombineMode CombineMode,
   EGMC_SimulationMode SimulationMode,
-  EGMC_InterpolationFunction InterpolationFunction,
-  EGMC_AdditionalSyncSettings AdditionalSyncSettings
+  EGMC_InterpolationFunction InterpolationFunction
 )
 {
   GMCReplication::FSyncSettings InternalSettings{};
@@ -586,9 +587,18 @@ inline GMCReplication::FSyncSettings TranslateToSyncSettings(
   SetCombineMode(CombineMode, InternalSettings);
   SetSimulationMode(SimulationMode, InternalSettings);
   SetInterpolationFunction(InterpolationFunction, InternalSettings);
-  SetAdditionalSyncSettings(AdditionalSyncSettings, InternalSettings);
 
   return InternalSettings;
+}
+
+inline GMCReplication::FSyncSettings TranslateToSyncSettings(const FGMC_PackedReplicationSettings& ReplicationSettings)
+{
+  return TranslateToSyncSettings(
+    ReplicationSettings.PredictionMode,
+    ReplicationSettings.CombineMode,
+    ReplicationSettings.SimulationMode,
+    ReplicationSettings.InterpolationFunction
+  );
 }
 
 inline bool IsClientAuth(EGMC_PredictionMode Mode)
@@ -596,6 +606,20 @@ inline bool IsClientAuth(EGMC_PredictionMode Mode)
   return
     Mode == EGMC_PredictionMode::ClientAuth_Output ||
     Mode == EGMC_PredictionMode::ClientAuth_Input ||
+    Mode == EGMC_PredictionMode::ClientAuth_InputOutput;
+}
+
+inline bool IsClientAuthInput(EGMC_PredictionMode Mode)
+{
+  return
+    Mode == EGMC_PredictionMode::ClientAuth_Input ||
+    Mode == EGMC_PredictionMode::ClientAuth_InputOutput;
+}
+
+inline bool IsClientAuthOutput(EGMC_PredictionMode Mode)
+{
+  return
+    Mode == EGMC_PredictionMode::ClientAuth_Output ||
     Mode == EGMC_PredictionMode::ClientAuth_InputOutput;
 }
 
@@ -607,6 +631,20 @@ inline bool IsServerAuthClientValidated(EGMC_PredictionMode Mode)
     Mode == EGMC_PredictionMode::ServerAuth_InputOutput_ClientValidated;
 }
 
+inline bool IsServerAuthInputClientValidated(EGMC_PredictionMode Mode)
+{
+  return
+    Mode == EGMC_PredictionMode::ServerAuth_Input_ClientValidated ||
+    Mode == EGMC_PredictionMode::ServerAuth_InputOutput_ClientValidated;
+}
+
+inline bool IsServerAuthOutputClientValidated(EGMC_PredictionMode Mode)
+{
+  return
+    Mode == EGMC_PredictionMode::ServerAuth_Output_ClientValidated ||
+    Mode == EGMC_PredictionMode::ServerAuth_InputOutput_ClientValidated;
+}
+
 inline bool IsServerAuthServerValidated(EGMC_PredictionMode Mode)
 {
   return
@@ -615,7 +653,31 @@ inline bool IsServerAuthServerValidated(EGMC_PredictionMode Mode)
     Mode == EGMC_PredictionMode::ServerAuth_InputOutput_ServerValidated;
 }
 
+inline bool IsServerAuthInputServerValidated(EGMC_PredictionMode Mode)
+{
+  return
+    Mode == EGMC_PredictionMode::ServerAuth_Input_ServerValidated ||
+    Mode == EGMC_PredictionMode::ServerAuth_InputOutput_ServerValidated;
+}
+
+inline bool IsServerAuthOutputServerValidated(EGMC_PredictionMode Mode)
+{
+  return
+    Mode == EGMC_PredictionMode::ServerAuth_Output_ServerValidated ||
+    Mode == EGMC_PredictionMode::ServerAuth_InputOutput_ServerValidated;
+}
+
 inline bool IsServerAuth(EGMC_PredictionMode Mode)
 {
   return IsServerAuthClientValidated(Mode) || IsServerAuthServerValidated(Mode);
+}
+
+inline bool IsServerAuthInput(EGMC_PredictionMode Mode)
+{
+  return IsServerAuthInputClientValidated(Mode) || IsServerAuthInputServerValidated(Mode);
+}
+
+inline bool IsServerAuthOutput(EGMC_PredictionMode Mode)
+{
+  return IsServerAuthOutputClientValidated(Mode) || IsServerAuthOutputServerValidated(Mode);
 }

@@ -65,30 +65,35 @@
       DEBUG_PRINT_MSG(0, "SpeedXY : %f", FVector(Velocity.X, Velocity.Y, 0.).Size())\
       DEBUG_PRINT_MSG(0, "SpeedTotal : %f", Velocity.Size())\
       DEBUG_PRINT_MSG(0, "DeltaTime : %f", GetMoveDeltaTime())\
+      DEBUG_PRINT_MSG(0, "InputVector (Processed) : %s", *GetProcessedInputVector().ToString())\
+      DEBUG_PRINT_MSG(0, "InputVector (Raw) : %s", *GetRawInputVector().ToString())\
       DEBUG_PRINT_MSG(0, "MovementMode : %s", *GetMovementModeAsString(MovementMode))\
     }\
     if (GMCCVars::LogOrganicMovementValues != 0)\
     {\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("MovementMode         : %s"), *GetMovementModeAsString(MovementMode))\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("DeltaTime            : %f"), GetMoveDeltaTime())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed Total          : %f"), Velocity.Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed XY             : %f"), FVector(Velocity.X, Velocity.Y, 0.).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed Z              : %f"), FVector(0.f, 0.f, Velocity.Z).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Location             :           %15.6f, %15.6f, %15.6f"), Location.X, Location.Y, Location.Z, (Location - GetStartLocation()).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Velocity             :           %15.6f, %15.6f, %15.6f"), Velocity.X, Velocity.Y, Velocity.Z, (Velocity - GetStartVelocity()).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Acceleration         :           %15.6f, %15.6f, %15.6f"), GetTransientAcceleration().X, GetTransientAcceleration().Y, GetTransientAcceleration().Z)\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Force                :           %15.6f, %15.6f, %15.6f"), GetTransientForce().X, GetTransientForce().Y, GetTransientForce().Z)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("MovementMode                    : %s"), *GetMovementModeAsString(MovementMode))\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("InputVector (Raw)               : %s"), *GetRawInputVector().ToString())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("InputVector (Processed)         : %s"), *GetProcessedInputVector().ToString())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("DeltaTime                       : %f"), GetMoveDeltaTime())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed Total                     : %f"), Velocity.Size())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed XY                        : %f"), FVector(Velocity.X, Velocity.Y, 0.).Size())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed Z                         : %f"), FVector(0.f, 0.f, Velocity.Z).Size())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Location                        :           %15.6f, %15.6f, %15.6f"), Location.X, Location.Y, Location.Z, (Location - GetStartLocation()).Size())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Velocity                        :           %15.6f, %15.6f, %15.6f"), Velocity.X, Velocity.Y, Velocity.Z, (Velocity - GetStartVelocity()).Size())\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Acceleration                    :           %15.6f, %15.6f, %15.6f"), GetTransientAcceleration().X, GetTransientAcceleration().Y, GetTransientAcceleration().Z)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Force                           :           %15.6f, %15.6f, %15.6f"), GetTransientForce().X, GetTransientForce().Y, GetTransientForce().Z)\
     }\
   }
 
-#define DEBUG_SHOW_FLOOR_SWEEP(Floor, TraceLength)\
+#define DEBUG_SHOW_FLOOR_SWEEP(Floor, Direction, TraceLength)\
   if (GMCCVars::ShowFloorSweep != 0 && !IsSubSteppedIteration())\
   {\
+    gmc_ck(Direction.IsNormalized())\
     const FTransform& Transform = UpdatedComponent->GetComponentTransform();\
     const FVector Debug_ShapeTraceStart = Transform.GetLocation();\
-    const FVector Debug_ShapeTraceEnd = Debug_ShapeTraceStart + FVector::DownVector * TraceLength;\
-    const FVector Debug_LineTraceStart = GetLowerBound();\
-    const FVector Debug_LineTraceEnd = Debug_LineTraceStart + FVector::DownVector * TraceLength;\
+    const FVector Debug_ShapeTraceEnd = Debug_ShapeTraceStart + Direction * TraceLength;\
+    const FVector Debug_LineTraceStart = Transform.GetLocation() + Direction * GetRootCollisionHalfHeight(true);\
+    const FVector Debug_LineTraceEnd = Debug_LineTraceStart + Direction * TraceLength;\
     const EGMC_CollisionShape CollisionShape = GetRootCollisionShape();\
     const FCollisionShape TraceShape = GetFrom(CollisionShape, GetRootCollisionExtent(true));\
     FQuat TraceRotation = AddToGMCCapsuleRotation(UpdatedComponent->GetComponentQuat());\
@@ -184,7 +189,7 @@
 #else
 
 #define DEBUG_STAT_AND_LOG_ORGANIC_MOVEMENT_VALUES
-#define DEBUG_SHOW_FLOOR_SWEEP(Floor, TraceLength)
+#define DEBUG_SHOW_FLOOR_SWEEP(Floor, Direction, TraceLength)
 #define DEBUG_LOG_NAN_DIAGNOSTIC
 
 #endif

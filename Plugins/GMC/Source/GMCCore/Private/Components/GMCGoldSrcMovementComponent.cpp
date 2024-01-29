@@ -656,7 +656,7 @@ void UGMC_GoldSrcMovementCmp::Slide(float MinRequiredZ, float DeltaSeconds)
 
   if (CurrentFloor.IsDirty(FloorUpdateTolerance, this) || !CurrentFloor.HasValidShapeData())
   {
-    UpdateFloor(CurrentFloor, FloorTraceLength, FloorUpdateTolerance, true, true);
+    UpdateFloor(CurrentFloor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, true);
   }
 
   if (!CurrentFloor.HasValidShapeData())

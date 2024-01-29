@@ -8,6 +8,10 @@
 #include "Animation/AnimMontage.h"
 #include "GameplayTagContainer.h"
 
+#ifdef GMC_ENABLE_USER_SYNC_TYPES
+#include GMC_USER_INCLUDE_PATH_TYPES
+#endif
+
 #define INTEGRATED_SYNC_TYPES\
   ActorBase,\
   LinearVelocity,\
@@ -17,12 +21,24 @@
   ActorScale,\
   ControlRotation
 
+#define INTEGRATED_SYNC_TYPES_DEFAULTS\
+  ActorBase,\
+  LinearVelocity,\
+  AngularVelocity,\
+  ActorLocation,\
+  ActorRotation,\
+  ActorScale,\
+  ControlRotation
+
+#define INTEGRATED_SYNC_TYPES_TAGS\
+  // None yet.
+
 #define INTEGRATED_SYNC_TYPES_NO_PHYSICS\
   ActorBase,\
   ActorScale,\
   ControlRotation
 
-#define GENERIC_SYNC_TYPES\
+#define GMC_GENERIC_SYNC_TYPES\
   Bit,\
   UnsignedInt4,\
   UnsignedInt8,\
@@ -41,6 +57,13 @@
   Name,\
   GameplayTag,\
   GameplayTagContainer
+
+#ifdef GMC_ENABLE_USER_SYNC_TYPES
+#define GENERIC_SYNC_TYPES_EXP GMC_GENERIC_SYNC_TYPES, TYPE_NAMES
+#define GENERIC_SYNC_TYPES GENERIC_SYNC_TYPES_EXP
+#else
+#define GENERIC_SYNC_TYPES GMC_GENERIC_SYNC_TYPES
+#endif
 
 #define ALL_SYNC_TYPES_EXP INTEGRATED_SYNC_TYPES, GENERIC_SYNC_TYPES
 #define ALL_SYNC_TYPES ALL_SYNC_TYPES_EXP
@@ -79,6 +102,10 @@ DEFINE_SYNC_TYPE(Name, ::FName)
 DEFINE_SYNC_TYPE(GameplayTag, ::FGameplayTag)
 DEFINE_SYNC_TYPE(GameplayTagContainer, ::FGameplayTagContainer)
 
+#ifdef GMC_ENABLE_USER_SYNC_TYPES
+TYPE_DEFS
+#endif
+
 #undef DEFINE_SYNC_TYPE
 
 }
@@ -111,5 +138,10 @@ enum class EGMC_SyncType : uint8
   Name,
   GameplayTag,
   GameplayTagContainer,
+
+#ifdef GMC_ENABLE_USER_SYNC_TYPES
+#include GMC_USER_INCLUDE_PATH_TYPE_LIST
+#endif
+
   MAX UMETA(Hidden)
 };

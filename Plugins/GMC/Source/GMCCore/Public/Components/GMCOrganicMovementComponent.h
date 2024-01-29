@@ -159,10 +159,10 @@ struct FGMC_BasedMovementRelative
   // If true, the mass of the pawn will be taken into account when imparting the velocity of a base the pawn has just left.
   bool bConsiderMassOnImpartVelocity{false};
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0", UIMax = "1"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0", UIMax = "3"))
   // How long a detected component must remain valid to be accepted as a new base. As the transition is handled exclusively by the server it may appear to take
   // longer than the set value on the client.
-  float BaseChangeTransitionTime{0.3f};
+  float BaseChangeTransitionTime{1.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   // If true, the outermost attach parent will be used as the base component if applicable.
@@ -175,6 +175,11 @@ struct FGMC_BasedMovementRelative
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   // If true, the pawn will not have any physics interactions with an object it is currently based on.
   bool bNoPhysicsInteractionWithBase{true};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // If true, the client will send additional information about the actor base rotation to the server. This can make the transition from one base to another
+  // significantly smoother (at the cost of increased bandwidth usage).
+  bool bSendActorBaseRotation{true};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   // If true, the actor that we are currently based on will be unrotated and moved to the equalization location for the move execution of client-owned pawns.
@@ -229,6 +234,7 @@ struct GMCCORE_API FGMC_BasedMovement
   bool GetFollowBaseRotation() const;
   bool GetForceRelativeBasedMovementForSimulation() const;
   float GetBaseChangeTransitionTime() const;
+  bool GetSendActorBaseRotation() const;
   bool GetEqualizeBaseActor() const;
   bool GetEqualizeInPlace() const;
   FVector GetEqualizationLocation() const;
@@ -314,6 +320,15 @@ struct GMCCORE_API FGMC_RelBasedMovementAux
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
   TObjectPtr<USceneComponent> SavedChangeBase{nullptr};
 
+  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
+  TObjectPtr<USceneComponent> CL_OriginalReplayMoveBase{nullptr};
+
+  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
+  FRotator CL_OriginalReplayMoveBaseRotation{};
+
+  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
+  FRotator ActorBaseRotation{0.};
+
   // The saved transforms are updated at very specific points in the logic. For local and remote moves they are saved before and after move execution. For
   // client replays they are saved before and after the full replay (but not for each individual replay move). For simulated pawns they are saved at the end of
   // every simulation tick. Since these values are local only it is generally not recommended to use them during move execution.
@@ -328,6 +343,9 @@ struct GMCCORE_API FGMC_RelBasedMovementAux
   void OnCumulativeMoveInitialized(FGMC_PawnState& InputState, UGMC_OrganicMovementCmp* const Outer);
   void UpdateSavedRelativeTransform(bool bSimulated, UGMC_OrganicMovementCmp* const Outer);
   void HandleMoveIgnoreActors(bool bSimulated, UGMC_OrganicMovementCmp* const Outer);
+  void SV_ReconcileClientAuthValues(bool bPreMoveExecution, UGMC_OrganicMovementCmp* const Outer);
+  void CL_PreReplayMoveExecution(const FGMC_Move& ReplayMove, UGMC_OrganicMovementCmp* const Outer);
+  void CL_ReconcileClientAuthValues(bool bPreMoveExecution, UGMC_OrganicMovementCmp* const Outer);
   void Reset();
 };
 
@@ -644,7 +662,14 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_MontageTracker_MontagePaused{-1};
 
+  UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
+  int32 BI_RelBasedMovementAux_ActorBaseRotation{-1};
+
   void BindReplicationData_Implementation() override;
+  void WorldTickStart_Implementation(float DeltaTime) override;
+  void WorldTickEnd_Implementation(float DeltaTime) override;
+  bool CL_ShouldUseSmoothCorrections() const override;
+  bool ShouldDeferAutonomousProxyCameraManagerUpdate() const override;
   void ClearTransientData(bool bResetMoves = true) override;
   void SetupPlayerInputComponent_Implementation(UInputComponent* PlayerInputComponent) override;
   bool SV_OnProxyMoveInitialized_Implementation(FGMC_Move& Move, float DeltaTime, double Timestamp) override;
@@ -661,12 +686,13 @@ protected:
   void SV_PreRemoteMoveExecution_Implementation(const FGMC_Move& RemoteMove) override;
   void PostLocalMoveExecution_Implementation(const FGMC_Move& ExecutedMove) override;
   void SV_PostRemoteMoveExecution_Implementation(const FGMC_Move& RemoteMove) override;
+  void CL_PreReplayMoveExecution_Implementation(const FGMC_Move& ReplayMove) override;
   bool CL_IsAllowedToReplay_Implementation(
     EGMC_SyncType DeviatingSyncType,
     int32 DeviatingSyncTypeIndex,
     const FGMC_PawnState& DeviatingState,
     const FGMC_PawnState& ServerState
-  ) const override;
+  ) override;
   void CL_PreAdoptStateForReplay(const FGMC_Move& APMove, const FGMC_Move& SourceMove) override;
   void CL_PreReplay_Implementation() override;
   void CL_PostReplay_Implementation() override;
@@ -698,6 +724,9 @@ private:
   /// Required to call CheckReceivedUpwardForce in PostMovementUpdate.
   FVector VelocityBeforeMovementUpdate{0.};
 
+  /// Helper function to determine if base equalizations should be visualized.
+  bool DebugShouldVisualizeBaseEqualization() const;
+
 public:
 
   /// Sets a reference to the skeletal mesh component of the owning pawn. This is automatically done once when beginning play (taking the first skeletal mesh in
@@ -714,6 +743,12 @@ public:
   /// @returns      USkeletalMeshComponent*    The skeletal mesh component of the owning pawn.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual USkeletalMeshComponent* GetSkeletalMeshReference() const;
+
+  /// Returns information about the floor currently located underneath the pawn.
+  ///
+  /// @returns      const FGMC_FloorParams&    The current floor.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual const FGMC_FloorParams& GetCurrentFloor() const;
 
 protected:
 
@@ -1093,6 +1128,19 @@ protected:
   /// @param        bSimulated      Whether the base change is being applied for simulation.
   /// @returns      void
   virtual void HandleActorBaseChange(USceneComponent* NewBase, USceneComponent* PreviousBase, bool bSimulated);
+
+  /// Sets the prerequisite ticks when the actor base changes.
+  ///
+  /// @param        bAdd    Whether to add or remove the prerequisite ticks.
+  /// @param        Base    The base to add or remove the prerequisite ticks for.
+  /// @returns      void
+  virtual void SetBasedMovementPrerequisiteTicks(bool bAdd, USceneComponent* Base);
+
+  /// Sets the tick group when the actor base changes.
+  ///
+  /// @param        NewBase    The new movement base (may be nullptr).
+  /// @returns      void
+  virtual void SetBasedMovementTickGroup(USceneComponent* NewBase);
 
   /// Called from PreMovementUpdate when the actor base has changed.
   ///
@@ -1475,6 +1523,12 @@ public:
   /// @returns      float    The current braking deceleration.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual float GetOverMaxSpeedDeceleration() const;
+
+  /// Returns the current ground friction.
+  ///
+  /// @returns      float    The current ground friction.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual float GetGroundFriction() const;
 
   /// Checks if the hit object is a walkable surface.
   ///
@@ -2325,8 +2379,8 @@ public:
   bool bLandOnEdges{true};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
-  /// If true, stepping up obstacles will be more efficient (but may not work equally well in every scenario). Works best with a low max step up height.
-  bool bSimplifyStepUp{true};
+  /// If true, stepping up obstacles will be more efficient, but results may be inferior in some situations. Works best with a low max step up height.
+  bool bSimplifyStepUp{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
   /// If false, grounded movement will be disabled when there's no gravity acting on the pawn.

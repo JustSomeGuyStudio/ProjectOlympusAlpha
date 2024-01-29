@@ -63,6 +63,7 @@ enum class EGMC_NetContext : uint8
   LocalClientPawn_PreMoveExecutionNoPrediction,
   LocalClientPawn_PostMoveExecutionNoPrediction,
   LocalClientPawn_ReplayAborted,
+  LocalClientPawn_ServerStateAdoptedForReplay,
   LocalClientPawn_PreReplay,
   LocalClientPawn_PreReplayMoveExecution,
   LocalClientPawn_PostReplayMoveExecution,

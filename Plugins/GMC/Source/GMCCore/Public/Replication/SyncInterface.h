@@ -76,33 +76,42 @@ struct GMCCORE_API FGMC_MemberAliases
 
 #undef ADD_MEMBER_ALIAS
 
-#define INIT_INTEGRATED(Name)\
+#define INIT_INTEGRATED_DEFAULTS(Name)\
   State.Name.Initialize(\
     TranslateToSyncSettings(\
       DefaultReplicationSettings.DefaultPredictionSettings.Name,\
       DefaultReplicationSettings.DefaultCombineSettings.Name,\
       DefaultReplicationSettings.DefaultSimulationSettings.Name,\
-      DefaultReplicationSettings.DefaultInterpolationFunctions.Name,\
-      DefaultReplicationSettings.DefaultAdditionalSyncSettings.Name\
+      DefaultReplicationSettings.DefaultInterpolationFunctions.Name\
     ), SimulationState, SimulationType, Component\
   );
+#define INIT_INTEGRATED_TAGS(Name)\
+  State.Name.Initialize(\
+    TranslateToSyncSettings(\
+      GetNonDefaultReplicationSettings(DefaultReplicationSettings.SyncTags.Name, SyncTagsData)\
+    ), SimulationState, SimulationType, Component\
+  );
+
 #define INIT_GENERIC(Name)\
   State.Name.Initialize(AliasData.Name, SimulationState, SimulationType, Component);
 
 inline void InitializeSyncData(
   FGMC_PawnState& State,
   const FGMC_DefaultReplicationSettings& DefaultReplicationSettings,
+  const FGMC_SyncTagsData& SyncTagsData,
   const FGMC_MemberAliases& AliasData,
   GMCReplication::ESimState SimulationState,
   GMCReplication::ESimType SimulationType,
   UGMC_ReplicationCmp* const Component
 )
 {
-  FOR_EACH(INIT_INTEGRATED, INTEGRATED_SYNC_TYPES)
+  FOR_EACH(INIT_INTEGRATED_DEFAULTS, INTEGRATED_SYNC_TYPES_DEFAULTS)
+  //FOR_EACH(INIT_INTEGRATED_TAGS, INTEGRATED_SYNC_TYPES_TAGS)
   FOR_EACH(INIT_GENERIC, GENERIC_SYNC_TYPES)
 }
 
-#undef INIT_INTEGRATED
+#undef INIT_INTEGRATED_DEFAULTS
+#undef INIT_INTEGRATED_TAGS
 #undef INIT_GENERIC
 
 #define PROCESS_INTEGRATED(Name)\
@@ -444,6 +453,7 @@ inline FGMC_PawnState InterpolateSyncData(
   int32 Filters,
   int32 FilterMode,
   const FGMC_DefaultReplicationSettings& DefaultReplicationSettings,
+  const FGMC_SyncTagsData& SyncTagsData,
   const FGMC_MemberAliases& AliasData,
   UGMC_ReplicationCmp* const Component
 )
@@ -452,6 +462,7 @@ inline FGMC_PawnState InterpolateSyncData(
   InitializeSyncData(
     InterpolatedState,
     DefaultReplicationSettings,
+    SyncTagsData,
     AliasData,
     SimState,
     GMCReplication::ESimType::None,
@@ -474,6 +485,7 @@ inline FGMC_PawnState InterpolateSyncData_NoPhysics(
   int32 Filters,
   int32 FilterMode,
   const FGMC_DefaultReplicationSettings& DefaultReplicationSettings,
+  const FGMC_SyncTagsData& SyncTagsData,
   const FGMC_MemberAliases& AliasData,
   UGMC_ReplicationCmp* const Component
 )
@@ -482,6 +494,7 @@ inline FGMC_PawnState InterpolateSyncData_NoPhysics(
   InitializeSyncData(
     InterpolatedState,
     DefaultReplicationSettings,
+    SyncTagsData,
     AliasData,
     SimState,
     GMCReplication::ESimType::None,
@@ -506,6 +519,7 @@ inline FGMC_PawnState InterpolateSyncData_ExtrapolationRecovery(
   int32 Filters,
   int32 FilterMode,
   const FGMC_DefaultReplicationSettings& DefaultReplicationSettings,
+  const FGMC_SyncTagsData& SyncTagsData,
   const FGMC_MemberAliases& AliasData,
   UGMC_ReplicationCmp* const Component
 )
@@ -514,6 +528,7 @@ inline FGMC_PawnState InterpolateSyncData_ExtrapolationRecovery(
   InitializeSyncData(
     InterpolatedState,
     DefaultReplicationSettings,
+    SyncTagsData,
     AliasData,
     SimState,
     GMCReplication::ESimType::None,

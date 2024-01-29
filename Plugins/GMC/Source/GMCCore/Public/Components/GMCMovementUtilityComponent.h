@@ -44,6 +44,7 @@ struct FGMC_FloorParams
   GENERATED_BODY()
 
   FGMC_FloorParams() = default;
+  virtual ~FGMC_FloorParams() {}
 
   FGMC_FloorParams(const FHitResult& ShapeHit, const FHitResult& LineHit, const UGMC_ReplicationCmp* const Outer)
     : ShapeHitResult(ShapeHit),
@@ -418,7 +419,6 @@ enum class EGMC_OverlapType : uint8
 {
   Begin,
   End,
-  Hit,
   MAX UMETA(Hidden),
 };
 
@@ -1519,16 +1519,24 @@ public:
   UFUNCTION(BlueprintCallable, BlueprintPure, Category = "General Movement Component")
   static FVector GetPlaneNormalWithWorldZ(const FVector& Direction);
 
-  /// Does a shape trace of the current root collision downward to update the floor parameters.
+  /// Does a shape trace of the current root collision to update the floor parameters.
   ///
   /// @param        Floor           The floor parameters to update.
+  /// @param        Direction       The direction in which to trace.
   /// @param        TraceLength     The length of the trace.
   /// @param        Tolerance       The tolerance to use for checking if the floor data is dirty.
   /// @param        bAutoAdjust     Whether the pawn position should be adjusted if the floor update fails due to initial penetrations.
   /// @param        bForceUpdate    If true the floor will be updated even when the floor data is not dirty.
   /// @returns      bool            True if the floor was updated, false otherwise.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  virtual bool UpdateFloor(UPARAM(Ref) FGMC_FloorParams& Floor, float TraceLength, float Tolerance, bool bAutoAdjust, bool bForceUpdate);
+  virtual bool UpdateFloor(
+    UPARAM(Ref) FGMC_FloorParams& Floor,
+    const FVector& Direction,
+    float TraceLength,
+    float Tolerance,
+    bool bAutoAdjust,
+    bool bForceUpdate
+  );
 
   /// Tries to adjust the root collision location for hits that started in penetration.
   ///
@@ -2201,8 +2209,7 @@ public:
     EGMC_OverlapType Type
   );
 
-  /// Resets the aux struct for filtering overlaps. This is required when the pawn is externally moved out of or into the overlap volume, or is spawned inside
-  /// the overlap volume.
+  /// Resets the aux struct for filtering overlaps.
   ///
   /// @param        Aux                The associated aux struct for filtering overlaps.
   /// @param        bIsOverlapping     Whether the pawn is currently inside the overlap volume.

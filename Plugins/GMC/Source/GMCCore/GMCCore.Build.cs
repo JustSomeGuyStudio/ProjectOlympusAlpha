@@ -48,6 +48,15 @@ public class GMCCore : ModuleRules
     PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private/Utility"));
     PrivateIncludePaths.Add(Path.Combine(ModuleDirectory, "Private/Widgets"));
 
+    // The include paths and file names for user-defined sync types. Only relevant when GMC_ENABLE_USER_SYNC_TYPES is defined.
+    //PublicDefinitions.Add("GMC_USER_INCLUDE_PATH_TYPES     = \"Types.user\"");
+    //PublicDefinitions.Add("GMC_USER_INCLUDE_PATH_TYPE_LIST = \"STList.user\"");
+    //PublicDefinitions.Add("GMC_USER_INCLUDE_PATH_TYPE_INTF = \"STIntf.user\"");
+    //PublicDefinitions.Add("GMC_USER_INCLUDE_PATH_TYPE_IMPL = \"STImpl.user\"");
+
+    // Uncomment to activate user-defined sync types. Remember to add the required module to the dependency list (which should not depend on GMCCore).
+    //PublicDefinitions.Add("GMC_ENABLE_USER_SYNC_TYPES");
+
     // Uncomment to activate additional check macros throughout the plugin.
     //PublicDefinitions.Add("GMC_DO_CHECK");
   }

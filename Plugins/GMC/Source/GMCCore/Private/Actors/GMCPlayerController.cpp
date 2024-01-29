@@ -159,10 +159,7 @@ void AGMC_PlayerController::UpdateCameraManager(float DeltaSeconds)
     return;
   }
 
-  if (
-    (ReplicationComponent->CL_ShouldUseSmoothCorrections() && ReplicationComponent->CL_SmoothCorrection.HasData()) ||
-    ReplicationComponent->IsNonPredictedAutonomousProxy()
-  )
+  if (ReplicationComponent->ShouldDeferAutonomousProxyCameraManagerUpdate())
   {
     bDeferredAutonomousProxyCameraManagerUpdate = true;
     return;

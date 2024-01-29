@@ -89,6 +89,14 @@ namespace GMCCVars
     ECVF_Default
   );
 
+  int32 VisualizeBaseEqualization = 0;
+  FAutoConsoleVariableRef CVarVisualizeBaseEqualization(
+    TEXT("gmc.VisualizeBaseEqualization"),
+    VisualizeBaseEqualization,
+    TEXT("Visualize the current actor base as equalized when applicable. 0: Disable, 1: Enable"),
+    ECVF_Default
+  );
+
 #endif
 }
 
@@ -209,6 +217,55 @@ void UGMC_OrganicMovementCmp::BindReplicationData_Implementation()
     MontageReplication.MontageSimulation.bReplicateMontagePaused ? EGMC_SimulationMode::PeriodicAndOnChange_Output : EGMC_SimulationMode::None,
     MontageReplication.MontageSimulation.MontagePausedInterpolation
   );
+
+  BI_RelBasedMovementAux_ActorBaseRotation = BindCompressedRotator(
+    RelBasedMovementAux.ActorBaseRotation,
+    BasedMovement.Relative.bSendActorBaseRotation ? EGMC_PredictionMode::ClientAuth_Input : EGMC_PredictionMode::None,
+    EGMC_CombineMode::AlwaysCombine,
+    EGMC_SimulationMode::None,
+    EGMC_InterpolationFunction{}
+  );
+}
+
+void UGMC_OrganicMovementCmp::WorldTickStart_Implementation(float DeltaTime)
+{
+  Super::WorldTickStart_Implementation(DeltaTime);
+
+  if (DebugShouldVisualizeBaseEqualization() && RelBasedMovementAux.bDidEqualizeBase)
+  {
+    RelBasedMovementAux.EqualizeBase(false, true/*moves all pawns*/, this);
+  }
+}
+
+void UGMC_OrganicMovementCmp::WorldTickEnd_Implementation(float DeltaTime)
+{
+  Super::WorldTickEnd_Implementation(DeltaTime);
+
+  gmc_ck(BasedMovement.IsRelative() ? !RelBasedMovementAux.bDidEqualizeBase : true)
+  if (DebugShouldVisualizeBaseEqualization() && !RelBasedMovementAux.bDidEqualizeBase)
+  {
+    RelBasedMovementAux.EqualizeBase(true, true/*moves all pawns*/, this);
+  }
+}
+
+bool UGMC_OrganicMovementCmp::CL_ShouldUseSmoothCorrections() const
+{
+  // Smooth corrections must be disabled when using the debug visualization.
+  return !DebugShouldVisualizeBaseEqualization() && Super::CL_ShouldUseSmoothCorrections();
+}
+
+bool UGMC_OrganicMovementCmp::ShouldDeferAutonomousProxyCameraManagerUpdate() const
+{
+  return (DebugShouldVisualizeBaseEqualization() && GetActorBase()) || Super::ShouldDeferAutonomousProxyCameraManagerUpdate();
+}
+
+bool UGMC_OrganicMovementCmp::DebugShouldVisualizeBaseEqualization() const
+{
+#if ALLOW_CONSOLE && !NO_LOGGING
+  return GMCCVars::VisualizeBaseEqualization != 0 && BasedMovement.IsRelative() && BasedMovement.GetEqualizeBaseActor();
+#else
+  return false;
+#endif
 }
 
 void UGMC_OrganicMovementCmp::ClearTransientData(bool bResetMoves)
@@ -636,12 +693,22 @@ void UGMC_OrganicMovementCmp::SV_PostRemoteMoveExecution_Implementation(const FG
   }
 }
 
+void UGMC_OrganicMovementCmp::CL_PreReplayMoveExecution_Implementation(const FGMC_Move& ReplayMove)
+{
+  Super::CL_PreReplayMoveExecution_Implementation(ReplayMove);
+
+  if (BasedMovement.IsRelative())
+  {
+    RelBasedMovementAux.CL_PreReplayMoveExecution(ReplayMove, this);
+  }
+}
+
 bool UGMC_OrganicMovementCmp::CL_IsAllowedToReplay_Implementation(
   EGMC_SyncType DeviatingSyncType,
   int32 DeviatingSyncTypeIndex,
   const FGMC_PawnState& DeviatingState,
   const FGMC_PawnState& ServerState
-) const
+)
 {
   if (!Super::CL_IsAllowedToReplay_Implementation(DeviatingSyncType, DeviatingSyncTypeIndex, DeviatingState, ServerState))
   {
@@ -741,7 +808,7 @@ void UGMC_OrganicMovementCmp::GenPredictionTick_Implementation(float DeltaTime)
     UpdateAvoidance();
   }
 
-  DEBUG_SHOW_FLOOR_SWEEP(CurrentFloor, FloorTraceLength)
+  DEBUG_SHOW_FLOOR_SWEEP(CurrentFloor, FVector::DownVector, FloorTraceLength)
   DEBUG_STAT_AND_LOG_ORGANIC_MOVEMENT_VALUES
   DEBUG_LOG_NAN_DIAGNOSTIC
 }
@@ -828,6 +895,28 @@ void UGMC_OrganicMovementCmp::OnSyncDataApplied_Implementation(const FGMC_PawnSt
   Super::OnSyncDataApplied_Implementation(State, Context);
 
   MaintainRootCollisionCoherency();
+
+  if (BasedMovement.IsRelative())
+  {
+    if (
+      SV_IsExecutingRemoteMoves() && (
+        Context == EGMC_NetContext::RemoteServerPawn_PreMoveExecution ||
+        Context == EGMC_NetContext::RemoteServerPawn_PostMoveExecution
+      )
+    )
+    {
+      RelBasedMovementAux.SV_ReconcileClientAuthValues(Context == EGMC_NetContext::RemoteServerPawn_PreMoveExecution, this);
+    }
+    else if (
+      CL_IsReplaying() && (
+        Context == EGMC_NetContext::LocalClientPawn_PreReplayMoveExecution ||
+        Context == EGMC_NetContext::LocalClientPawn_PostReplayMoveExecution
+      )
+    )
+    {
+      RelBasedMovementAux.CL_ReconcileClientAuthValues(Context == EGMC_NetContext::LocalClientPawn_PreReplayMoveExecution, this);
+    }
+  }
 }
 
 EGMC_CollisionShape UGMC_OrganicMovementCmp::GetRootCollisionShape() const
@@ -1690,8 +1779,15 @@ bool UGMC_OrganicMovementCmp::UpdateMovementModeStatic_Implementation(FGMC_Floor
     }
   }
 
-  CFLog(GetMovementMode() == EGMC_MovementMode::Airborne, VeryVerbose, "Pawn remaining airborne.")
-  SetMovementMode(EGMC_MovementMode::Airborne);
+  if (!Floor.ShapeHit().bStartPenetrating)
+  {
+    CFLog(GetMovementMode() == EGMC_MovementMode::Airborne, VeryVerbose, "Pawn remaining airborne.")
+    SetMovementMode(EGMC_MovementMode::Airborne);
+  }
+  else
+  {
+    FLog(VeryVerbose, "Movement mode not updated due to penetrating shape hit.")
+  }
 
   if (bShouldFallOffLedge)
   {
@@ -1942,6 +2038,11 @@ float UGMC_OrganicMovementCmp::GetOverMaxSpeedDeceleration() const
   }
 }
 
+float UGMC_OrganicMovementCmp::GetGroundFriction() const
+{
+  return GroundFriction;
+}
+
 void UGMC_OrganicMovementCmp::CalculateVelocity(float DeltaSeconds)
 {
   SCOPE_CYCLE_COUNTER(STAT_CalculateVelocity)
@@ -1987,7 +2088,11 @@ bool UGMC_OrganicMovementCmp::ShouldPerformDirectMove_Implementation() const
   return !RequestedVelocity.IsNearlyZero(UE_DOUBLE_KINDA_SMALL_NUMBER) && !HasRootMotion();
 }
 
-void UGMC_OrganicMovementCmp::BotDirectMove_Implementation(const FVector& PathVelocity, const FGMC_RootMotionVelocitySettings& RootMotionMetaData, float DeltaSeconds)
+void UGMC_OrganicMovementCmp::BotDirectMove_Implementation(
+  const FVector& PathVelocity,
+  const FGMC_RootMotionVelocitySettings& RootMotionMetaData,
+  float DeltaSeconds
+)
 {
   FVector PathDirection = PathVelocity.GetSafeNormal();
   const float CurrentMaxSpeed = GetMaxSpeed();
@@ -2039,7 +2144,7 @@ void UGMC_OrganicMovementCmp::ApplyInputVelocity(const FGMC_RootMotionVelocitySe
     InputAcceleration.Z = 0.;
     // The ground friction affects our ability to accelerate and change direction. For the input acceleration we clamp this to a multiplier of 1 but for
     // deceleration it can be larger to come to a halt faster.
-    InputAcceleration *= FMath::Min(GroundFriction, 1.f);
+    InputAcceleration *= FMath::Min(GetGroundFriction(), 1.f);
   }
 
   const bool bShouldApplyFallControl = FallControl > UE_KINDA_SMALL_NUMBER && IsAirborne() && IsAffectedByGravity();
@@ -2152,7 +2257,7 @@ void UGMC_OrganicMovementCmp::ApplyDeceleration(const FGMC_RootMotionVelocitySet
     if (const bool bIsFlying = IsFlying(); IsMovingOnGround() || bIsFlying)
     {
       // Scale deceleration with the ground friction.
-      Deceleration *= bIsFlying ? 1.f : GroundFriction;
+      Deceleration *= bIsFlying ? 1.f : GetGroundFriction();
       if (CurrentImmersionDepth >= PartialImmersionThreshold)
       {
         // We move slower while partially immersed in water.
@@ -2489,7 +2594,7 @@ void UGMC_OrganicMovementCmp::UpdateBasedMovementVelocity(float DeltaSeconds)
 
   if (!PreviousBase)
   {
-    UpdateFloor(CurrentFloor, FloorTraceLength, FloorUpdateTolerance, true, false);
+    UpdateFloor(CurrentFloor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, false);
   }
 
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, MoveWithBaseVelocity, DeltaSeconds);
@@ -2512,7 +2617,7 @@ void UGMC_OrganicMovementCmp::UpdateBasedMovementVelocity(float DeltaSeconds)
 
   if (PreviousBase || bActorBaseChanged)
   {
-    UpdateFloor(CurrentFloor, FloorTraceLength, FloorUpdateTolerance, true, false);
+    UpdateFloor(CurrentFloor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, false);
   }
 }
 
@@ -2534,7 +2639,7 @@ void UGMC_OrganicMovementCmp::UpdateBasedMovementRelative(float DeltaSeconds)
     RelBasedMovementAux.HandleMoveIgnoreActors(IsSimulating(), this);
   }
 
-  UpdateFloor(CurrentFloor, FloorTraceLength, FloorUpdateTolerance, true, false);
+  UpdateFloor(CurrentFloor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, false);
 }
 
 void UGMC_OrganicMovementCmp::UpdateBasedMovementNone(float DeltaSeconds)
@@ -2550,7 +2655,7 @@ void UGMC_OrganicMovementCmp::UpdateBasedMovementNone(float DeltaSeconds)
     HandleActorBaseChange(nullptr, PreviousBase, false);
   }
 
-  UpdateFloor(CurrentFloor, FloorTraceLength, FloorUpdateTolerance, true, false);
+  UpdateFloor(CurrentFloor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, false);
 }
 
 USceneComponent* UGMC_OrganicMovementCmp::GetRelativeActorBase() const
@@ -2754,7 +2859,7 @@ FVector UGMC_OrganicMovementCmp::MoveAlongFloor(const FVector& LocationDelta, FG
   {
     FLog(VeryVerbose, "Updating floor after move.")
 
-    UpdateFloor(Floor, FloorTraceLength, FloorUpdateTolerance, true, false);
+    UpdateFloor(Floor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, false);
 
     bool bStillWithinLineMaxStepDownHeight = Floor.HasValidLineData() && Floor.GetLineDistanceToFloor() <= MaxStepDownHeight + MAX_DISTANCE_TO_FLOOR;
     if (HitWalkableFloor(Floor.ShapeHit()) && bStillWithinLineMaxStepDownHeight)
@@ -2785,7 +2890,7 @@ FVector UGMC_OrganicMovementCmp::MoveAlongFloor(const FVector& LocationDelta, FG
           MoveUpdatedComponent(AppliedDelta / Divisor, UpdatedComponent->GetComponentQuat(), false, nullptr, ETeleportType::TeleportPhysics);
 
           // We need to force the update here because even a very small deviation could cause the pawn to go over the ledge.
-          UpdateFloor(Floor, FloorTraceLength, FloorUpdateTolerance, false, true);
+          UpdateFloor(Floor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, false, true);
 
           bStillWithinLineMaxStepDownHeight = Floor.HasValidLineData() && Floor.GetLineDistanceToFloor() <= MaxStepDownHeight + MAX_DISTANCE_TO_FLOOR;
           if (HitWalkableFloor(Floor.ShapeHit()) && bStillWithinLineMaxStepDownHeight)
@@ -3303,7 +3408,7 @@ void UGMC_OrganicMovementCmp::ProcessLanded(const FHitResult& Hit, FGMC_FloorPar
 
   if (bUpdateFloor)
   {
-    UpdateFloor(Floor, FloorTraceLength, FloorUpdateTolerance, true, false);
+    UpdateFloor(Floor, FVector::DownVector, FloorTraceLength, FloorUpdateTolerance, true, false);
   }
 
   gmc_ck(LandingVelocity == FVector::ZeroVector)
@@ -3730,12 +3835,7 @@ void UGMC_OrganicMovementCmp::HandleActorBaseChange(USceneComponent* NewBase, US
     {
       if (!Cast<AGMC_RollbackActor>(PreviousBase->GetOwner()))
       {
-        RemoveTickPrerequisiteActor(PreviousBase->GetOwner());
-
-        if (IsValid(GMCAggregator))
-        {
-          GMCAggregator->RemoveTickPrerequisiteActor(PreviousBase->GetOwner());
-        }
+        SetBasedMovementPrerequisiteTicks(false, PreviousBase);
       }
     }
 
@@ -3743,14 +3843,11 @@ void UGMC_OrganicMovementCmp::HandleActorBaseChange(USceneComponent* NewBase, US
     {
       if (!Cast<AGMC_RollbackActor>(NewBase->GetOwner()))
       {
-        AddTickPrerequisiteActor(NewBase->GetOwner());
-
-        if (IsValid(GMCAggregator))
-        {
-          GMCAggregator->AddTickPrerequisiteActor(NewBase->GetOwner());
-        }
+        SetBasedMovementPrerequisiteTicks(true, NewBase);
       }
     }
+
+    SetBasedMovementTickGroup(NewBase);
   }
 
   if (bSimulated)
@@ -3764,6 +3861,93 @@ void UGMC_OrganicMovementCmp::HandleActorBaseChange(USceneComponent* NewBase, US
     CALL_NATIVE_EVENT_CONDITIONAL(
       bNoBlueprintEvents, this, OnActorBaseChanged, Cast<UPrimitiveComponent>(NewBase), Cast<UPrimitiveComponent>(PreviousBase)
     );
+  }
+}
+
+void UGMC_OrganicMovementCmp::SetBasedMovementPrerequisiteTicks(bool bAdd, USceneComponent* Base)
+{
+  gmc_ck(Base)
+
+  const auto& BaseOwner = Base->GetOwner();
+
+  const TSet<UActorComponent*>& BaseOwnerComponents = [&]()
+  {
+    if (BaseOwner)
+    {
+      return BaseOwner->GetComponents();
+    }
+
+    return TSet<UActorComponent*>{};
+  }();
+
+  bAdd ? AddTickPrerequisiteComponent(Base) : RemoveTickPrerequisiteComponent(Base);
+
+  if (BaseOwner)
+  {
+    bAdd ? AddTickPrerequisiteActor(BaseOwner) : RemoveTickPrerequisiteActor(BaseOwner);
+  }
+
+  for (UActorComponent* Component : BaseOwnerComponents)
+  {
+    if (Component)
+    {
+      bAdd ? AddTickPrerequisiteComponent(Component) : RemoveTickPrerequisiteComponent(Component);
+    }
+  }
+
+  if (IsValid(GMCAggregator))
+  {
+    bAdd ? GMCAggregator->AddTickPrerequisiteComponent(Base) : GMCAggregator->RemoveTickPrerequisiteComponent(Base);
+
+    if (BaseOwner)
+    {
+      bAdd ? GMCAggregator->AddTickPrerequisiteActor(BaseOwner) : GMCAggregator->RemoveTickPrerequisiteActor(BaseOwner);
+    }
+
+    for (UActorComponent* Component : BaseOwnerComponents)
+    {
+      if (Component)
+      {
+        bAdd ? GMCAggregator->AddTickPrerequisiteComponent(Component) : GMCAggregator->RemoveTickPrerequisiteComponent(Component);
+      }
+    }
+  }
+}
+
+void UGMC_OrganicMovementCmp::SetBasedMovementTickGroup(USceneComponent* NewBase)
+{
+  if (NewBase)
+  {
+    if (NewBase->IsSimulatingPhysics())
+    {
+      // If the base is simulating physics, it is preferable that the movement only runs after the physics were updated. Otherwise the pawn and the base will
+      // always be offset by one frame (which may or may not be noticeable).
+
+      SetTickGroup(TG_PostPhysics);
+
+      if (IsValid(GMCAggregator))
+      {
+        GMCAggregator->SetTickGroup(TG_PostPhysics);
+      }
+    }
+    else
+    {
+      SetTickGroup(TG_PrePhysics);
+
+      if (IsValid(GMCAggregator))
+      {
+        GMCAggregator->SetTickGroup(TG_PrePhysics);
+      }
+    }
+  }
+  else
+  {
+    SetTickGroup(TG_PrePhysics);
+
+    if (IsValid(GMCAggregator))
+    {
+      GMCAggregator->SetTickGroup(TG_PrePhysics);
+    }
   }
 }
 
@@ -4479,6 +4663,11 @@ bool UGMC_OrganicMovementCmp::ShouldApplyPhysicsInteraction(UPrimitiveComponent*
   return true;
 }
 
+const FGMC_FloorParams& UGMC_OrganicMovementCmp::GetCurrentFloor() const
+{
+  return CurrentFloor;
+}
+
 void UGMC_OrganicMovementCmp::SetSkeletalMeshReference(USkeletalMeshComponent* Mesh)
 {
   if (SkeletalMesh && SkeletalMesh != Mesh)
@@ -4924,10 +5113,10 @@ bool UGMC_OrganicMovementCmp::CL_AllowReplayBasedOnMontageValues(
   }
 
   if (
-    DeviatingSyncType == EGMC_SyncType::AnimMontageReference && DeviatingSyncTypeIndex == BI_MontageTracker_Montage ||
-    DeviatingSyncType == EGMC_SyncType::SinglePrecisionFloat && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePosition ||
-    DeviatingSyncType == EGMC_SyncType::CompressedSinglePrecisionFloat && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePlayRate ||
-    DeviatingSyncType == EGMC_SyncType::Bool && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePaused
+    (DeviatingSyncType == EGMC_SyncType::AnimMontageReference && DeviatingSyncTypeIndex == BI_MontageTracker_Montage) ||
+    (DeviatingSyncType == EGMC_SyncType::SinglePrecisionFloat && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePosition) ||
+    (DeviatingSyncType == EGMC_SyncType::CompressedSinglePrecisionFloat && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePlayRate) ||
+    (DeviatingSyncType == EGMC_SyncType::Bool && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePaused)
   )
   {
     const auto& ServerMontage = ServerState.AnimMontageReference.Read(BI_MontageTracker_Montage);
@@ -5803,6 +5992,12 @@ float FGMC_BasedMovement::GetBaseChangeTransitionTime() const
   return IsRelative() ? Relative.BaseChangeTransitionTime : 0.f;
 }
 
+bool FGMC_BasedMovement::GetSendActorBaseRotation() const
+{
+  gmc_ck(IsRelative())
+  return IsRelative() ? Relative.bSendActorBaseRotation : false;
+}
+
 bool FGMC_BasedMovement::GetEqualizeBaseActor() const
 {
   gmc_ck(IsRelative())
@@ -5857,6 +6052,16 @@ void FGMC_RelBasedMovementAux::PreMoveExecution(bool bLocalMove, UGMC_OrganicMov
   // Resave to be able to refer to the saved base during base equalization and post move execution. Additionally, these wouldn't reflect the correct values when
   // executing a combined move so overwriting here is also safer.
   SavedTransforms.Save(false, Outer);
+
+  // Must be saved before the base is equalized.
+  if (const auto& Base = Outer->GetActorBase())
+  {
+    ActorBaseRotation = Base->GetComponentRotation();
+  }
+  else
+  {
+    ActorBaseRotation = FRotator::ZeroRotator;
+  }
 
   if (Outer->BasedMovement.GetEqualizeBaseActor())
   {
@@ -6308,6 +6513,262 @@ void FGMC_RelBasedMovementAux::HandleMoveIgnoreActors(bool bSimulated, UGMC_Orga
   }
 }
 
+void FGMC_RelBasedMovementAux::SV_ReconcileClientAuthValues(bool bPreMoveExecution, UGMC_OrganicMovementCmp* const Outer)
+{
+  gmc_ck(Outer->IsRemotelyControlledServerPawn())
+  gmc_ck(Outer->SV_IsExecutingRemoteMoves())
+  gmc_ck(Outer->BasedMovement.IsRelative())
+
+  // Due to the fact that the actor base is not predicted for relative based movement, client-auth variables can cause issues during a base change. The values
+  // will still refer to the previous base for any packet that was sent out while the client had not received the correction with the updated base actor yet,
+  // but the server will still apply the "wrong" value regardless because it is client-auth. We try to mitigate this here to make the base transition smoother
+  // for the client.
+
+  const auto& LastClientData = Outer->SV_GetLastClientData();
+  const auto& ReplicationSettings = Outer->ReplicationSettings.DefaultPredictionSettings;
+  bool bReconcile{false};
+  USceneComponent* ClientBase{nullptr};
+  bool bHasActorBaseRotation{false};
+
+  const auto& ClientState =
+    [&LastClientData, &ReplicationSettings, bPreMoveExecution, Outer]
+    (bool& bOutReconcile, USceneComponent*& OutClientBase, bool& bOutHasActorBaseRotation)
+  {
+    gmc_ck(!bOutReconcile)
+    gmc_ck(!OutClientBase)
+    gmc_ck(!bOutHasActorBaseRotation)
+
+    // Only works if the actor base is server validated, otherwise we cannot know the client's base for the move.
+
+    OutClientBase = [&]() -> USceneComponent*
+    {
+      if (IsServerAuthInputServerValidated(ReplicationSettings.ActorBase))
+      {
+        bOutReconcile = true;
+        return LastClientData.InputState.ActorBase.Read();
+      }
+
+      if (IsServerAuthOutputServerValidated(ReplicationSettings.ActorBase))
+      {
+        bOutReconcile = true;
+        return LastClientData.OutputState.ActorBase.Read();
+      }
+
+      gmc_ckne()
+      gmc_ck(!bOutReconcile)
+      return nullptr;
+    }();
+
+    if (bOutReconcile && Outer->BasedMovement.GetSendActorBaseRotation())
+    {
+      bOutHasActorBaseRotation = static_cast<bool>(OutClientBase);
+      // The prediction mode for the actor base rotation should be "ClientAuth_Input".
+    }
+
+    return bPreMoveExecution ? LastClientData.InputState : LastClientData.OutputState;
+  }(bReconcile, ClientBase, bHasActorBaseRotation);
+
+  if (!bReconcile)
+  {
+    return;
+  }
+
+  const auto& ServerBase = Outer->GetActorBase();
+  if (ClientBase == ServerBase)
+  {
+    // The client is currently not transitioning to a new base.
+    return;
+  }
+
+  // The current client move still refers to the previous actor base.
+
+  const bool bSetBasedValue = Outer->BasedMovement.GetEqualizeBaseActor() && bDidEqualizeBase;
+  const FTransform ActorBaseRotationTransform = FTransform{ActorBaseRotation};
+
+  if (bPreMoveExecution ? IsClientAuthInput(ReplicationSettings.LinearVelocity) : IsClientAuthOutput(ReplicationSettings.LinearVelocity))
+  {
+    if (bSetBasedValue)
+    {
+      const auto& ClientLinearVelocity = ClientState.LinearVelocity.Read();
+      Outer->SetLinearVelocity_GMC(Outer->GetBasedLinearVelocityFor(ClientLinearVelocity, SavedBaseEqualizationTransform));
+    }
+    else if (!bHasActorBaseRotation && ClientBase)
+    {
+      Outer->SetLinearVelocity_GMC(SavedTransforms.GetSavedWorldLinearVelocity(false));
+    }
+    else
+    {
+      const auto& ClientLinearVelocity = ClientState.LinearVelocity.Read();
+      Outer->SetLinearVelocity_GMC(Outer->GetWorldLinearVelocityFor(ClientLinearVelocity, ActorBaseRotationTransform));
+    }
+  }
+
+  if (bPreMoveExecution ? IsClientAuthInput(ReplicationSettings.ActorLocation) : IsClientAuthOutput(ReplicationSettings.ActorLocation))
+  {
+    if (bSetBasedValue)
+    {
+      const auto& ClientActorLocation = ClientState.ActorLocation.Read();
+      Outer->SetActorLocation_GMC(Outer->GetBasedActorLocationFor(ClientActorLocation, SavedBaseEqualizationTransform));
+    }
+    else if (!bHasActorBaseRotation && ClientBase)
+    {
+      Outer->SetActorLocation_GMC(SavedTransforms.GetSavedWorldActorLocation(false));
+    }
+    else
+    {
+      const auto& ClientActorLocation = ClientState.ActorLocation.Read();
+      Outer->SetActorLocation_GMC(Outer->GetWorldActorLocationFor(ClientActorLocation, ActorBaseRotationTransform));
+    }
+  }
+
+  if (bPreMoveExecution ? IsClientAuthInput(ReplicationSettings.ActorRotation) : IsClientAuthOutput(ReplicationSettings.ActorRotation))
+  {
+    if (bSetBasedValue)
+    {
+      const auto& ClientActorRotation = ClientState.ActorRotation.Read();
+      Outer->SetActorRotation_GMC(Outer->GetBasedActorRotationFor(ClientActorRotation, SavedBaseEqualizationTransform));
+    }
+    else if (!bHasActorBaseRotation && ClientBase)
+    {
+      Outer->SetActorRotation_GMC(SavedTransforms.GetSavedWorldActorRotation(false));
+    }
+    else
+    {
+      const auto& ClientActorRotation = ClientState.ActorRotation.Read();
+      Outer->SetActorRotation_GMC(Outer->GetWorldActorRotationFor(ClientActorRotation, ActorBaseRotationTransform));
+    }
+  }
+
+  if (bPreMoveExecution ? IsClientAuthInput(ReplicationSettings.ControlRotation) : IsClientAuthOutput(ReplicationSettings.ControlRotation))
+  {
+    if (bSetBasedValue)
+    {
+      const auto& ClientControlRotation = ClientState.ControlRotation.Read();
+      Outer->SetControllerRotation_GMC(Outer->GetBasedControlRotationFor(ClientControlRotation, SavedBaseEqualizationTransform));
+    }
+    else if (!bHasActorBaseRotation && ClientBase)
+    {
+      Outer->SetControllerRotation_GMC(SavedTransforms.GetSavedWorldControlRotation(false));
+    }
+    else
+    {
+      const auto& ClientControlRotation = ClientState.ControlRotation.Read();
+      Outer->SetControllerRotation_GMC(Outer->GetWorldControlRotationFor(ClientControlRotation, ActorBaseRotationTransform));
+    }
+  }
+}
+
+void FGMC_RelBasedMovementAux::CL_PreReplayMoveExecution(const FGMC_Move& ReplayMove, UGMC_OrganicMovementCmp* const Outer)
+{
+  // Save these values for use in CL_ReconcileClientAuthValues before they are overwritten during the replay. It is only necessary to do this once before the
+  // input state is resaved because the base component is updated by the server exclusively for relative based movement and will not change during the move
+  // execution.
+  CL_OriginalReplayMoveBase = ReplayMove.InputState.ActorBase.Read();
+  CL_OriginalReplayMoveBaseRotation = Outer->GetBoundCompressedRotator(Outer->BI_RelBasedMovementAux_ActorBaseRotation, ReplayMove.InputState);
+}
+
+void FGMC_RelBasedMovementAux::CL_ReconcileClientAuthValues(bool bPreMoveExecution, UGMC_OrganicMovementCmp* const Outer)
+{
+  gmc_ck(Outer->IsPredictedAutonomousProxy())
+  gmc_ck(Outer->CL_IsReplaying())
+  gmc_ck(Outer->BasedMovement.IsRelative())
+
+  const auto& CurrentBase = Outer->GetActorBase();
+  const auto& OriginalBase = CL_OriginalReplayMoveBase;
+
+  if (CurrentBase == OriginalBase)
+  {
+    return;
+  }
+
+  const auto& ReplicationSettings = Outer->ReplicationSettings.DefaultPredictionSettings;
+  bool bReconcile{false};
+
+  const auto& OriginalClientState = [&](bool& bOutReconcile)
+  {
+    bOutReconcile = false;
+
+    // Only relevant when the actor base is replicated server-authoritatively.
+
+    if (IsServerAuth(ReplicationSettings.ActorBase))
+    {
+      bOutReconcile = true;
+    }
+
+    return bPreMoveExecution ? Outer->CL_GetCurrentReplayMove().InputState : Outer->CL_GetCurrentReplayMove().OutputState;
+  }(bReconcile);
+
+  if (!bReconcile)
+  {
+    return;
+  }
+
+  // Client-auth variables are not resaved during a replay, so we can still refer to the values from the original move.
+
+  const bool bSetBasedValue = Outer->BasedMovement.GetEqualizeBaseActor() && bDidEqualizeBase;
+  const FTransform OriginalReplayMoveBaseRotationTransform = FTransform{ActorBaseRotation};
+
+  if (bPreMoveExecution ? IsClientAuthInput(ReplicationSettings.LinearVelocity) : IsClientAuthOutput(ReplicationSettings.LinearVelocity))
+  {
+    const auto& OriginalValue = OriginalClientState.LinearVelocity.Read();
+    if (bSetBasedValue)
+    {
+      const auto& BasedValue = Outer->GetBasedLinearVelocityFor(OriginalValue, SavedBaseEqualizationTransform);
+      Outer->SetLinearVelocity_GMC(BasedValue);
+    }
+    else
+    {
+      const auto& WorldValue = OriginalBase ? Outer->GetWorldLinearVelocityFor(OriginalValue, OriginalReplayMoveBaseRotationTransform) : OriginalValue;
+      Outer->SetLinearVelocity_GMC(WorldValue);
+    }
+  }
+
+  if (bPreMoveExecution ? IsClientAuth(ReplicationSettings.ActorLocation) : IsClientAuthOutput(ReplicationSettings.ActorLocation))
+  {
+    const auto& OriginalValue = OriginalClientState.ActorLocation.Read();
+    if (bSetBasedValue)
+    {
+      const auto& BasedValue = Outer->GetBasedActorLocationFor(OriginalValue, SavedBaseEqualizationTransform);
+      Outer->SetActorLocation_GMC(BasedValue);
+    }
+    else
+    {
+      const auto& WorldValue = OriginalBase ? Outer->GetWorldActorLocationFor(OriginalValue, OriginalReplayMoveBaseRotationTransform) : OriginalValue;
+      Outer->SetActorLocation_GMC(WorldValue);
+    }
+  }
+
+  if (bPreMoveExecution ? IsClientAuth(ReplicationSettings.ActorRotation) : IsClientAuthOutput(ReplicationSettings.ActorRotation))
+  {
+    const auto& OriginalValue = OriginalClientState.ActorRotation.Read();
+    if (bSetBasedValue)
+    {
+      const auto& BasedValue = Outer->GetBasedActorRotationFor(OriginalValue, SavedBaseEqualizationTransform);
+      Outer->SetActorRotation_GMC(BasedValue);
+    }
+    else
+    {
+      const auto& WorldValue = OriginalBase ? Outer->GetWorldActorRotationFor(OriginalValue, OriginalReplayMoveBaseRotationTransform) : OriginalValue;
+      Outer->SetActorRotation_GMC(WorldValue);
+    }
+  }
+
+  if (bPreMoveExecution ? IsClientAuth(ReplicationSettings.ControlRotation) : IsClientAuthOutput(ReplicationSettings.ControlRotation))
+  {
+    const auto& OriginalValue = OriginalClientState.ControlRotation.Read();
+    if (bSetBasedValue)
+    {
+      const auto& BasedValue = Outer->GetBasedControlRotationFor(OriginalValue, SavedBaseEqualizationTransform);
+      Outer->SetControllerRotation_GMC(BasedValue);
+    }
+    else
+    {
+      const auto& WorldValue = OriginalBase ? Outer->GetWorldControlRotationFor(OriginalValue, OriginalReplayMoveBaseRotationTransform) : OriginalValue;
+      Outer->SetControllerRotation_GMC(WorldValue);
+    }
+  }
+}
+
 void FGMC_RelBasedMovementAux::Reset()
 {
   SavedTransforms.Reset(true);
@@ -6347,19 +6808,11 @@ void FGMC_SavedRelBasedMovement::SavePawnRelative(bool bSimulated, UGMC_Replicat
 
 void FGMC_SavedRelBasedMovement::SavePawnWorld(bool bSimulated, UGMC_ReplicationCmp* const Outer)
 {
-  if (bSimulated ? BaseSimulated.IsValid() : Base.IsValid())
-  {
-    (bSimulated ? PawnWorldSimulated.LinearVelocity : PawnWorld.LinearVelocity) = Outer->GetLinearVelocity_GMC();
-    (bSimulated ? PawnWorldSimulated.Location : PawnWorld.Location) = Outer->GetActorLocation_GMC();
-    (bSimulated ? PawnWorldSimulated.Rotation : PawnWorld.Rotation) = Outer->GetActorRotation_GMC();
-    (bSimulated ? PawnWorldSimulated.ControlRotation : PawnWorld.ControlRotation) = Outer->GetControllerRotation_GMC();
-    return;
-  }
-
-  (bSimulated ? PawnWorldSimulated.LinearVelocity : PawnWorld.LinearVelocity) = FVector::ZeroVector;
-  (bSimulated ? PawnWorldSimulated.Location : PawnWorld.Location) = FVector::ZeroVector;
-  (bSimulated ? PawnWorldSimulated.Rotation : PawnWorld.Rotation) = FRotator::ZeroRotator;
-  (bSimulated ? PawnWorldSimulated.ControlRotation : PawnWorld.ControlRotation) = FRotator::ZeroRotator;
+  // Always save the pawn world transform since it does not rely on a valid actor base and the saved values may be used by SV_ReconcileClientAuthValues.
+  (bSimulated ? PawnWorldSimulated.LinearVelocity : PawnWorld.LinearVelocity) = Outer->GetLinearVelocity_GMC();
+  (bSimulated ? PawnWorldSimulated.Location : PawnWorld.Location) = Outer->GetActorLocation_GMC();
+  (bSimulated ? PawnWorldSimulated.Rotation : PawnWorld.Rotation) = Outer->GetActorRotation_GMC();
+  (bSimulated ? PawnWorldSimulated.ControlRotation : PawnWorld.ControlRotation) = Outer->GetControllerRotation_GMC();
 }
 
 void FGMC_SavedRelBasedMovement::SaveBaseWorld(bool bSimulated, UGMC_ReplicationCmp* const Outer)
