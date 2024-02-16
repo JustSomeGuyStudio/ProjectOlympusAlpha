@@ -7,7 +7,10 @@
 		{
 			"Name": "ProjectOlympusAlpha",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"NiagaraAnimNotifies"
+			]
 		}
 	],
 	"Plugins": [
@@ -39,7 +42,7 @@
 		},
 		{
 			"Name": "ElectronicNodes",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/5cb2a394d0c04e73891762be4cbd7216"
 		},
 		{
@@ -49,7 +52,7 @@
 		},
 		{
 			"Name": "UnrealBucket",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "https://publish.unrealengine.com/v3/edit-product/3ce48046720d4a66b4f804b0d135a820"
 		},
 		{
