@@ -1,2 +1,3 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+I:/UE_Projects/GitLabRepo/ProjectOlympusAlpha/Content/Blueprints/Characters/Player/TestMale1.uasset filter=lfs diff=lfs merge=lfs -text
