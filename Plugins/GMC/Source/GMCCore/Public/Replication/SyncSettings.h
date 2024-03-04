@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -680,4 +680,48 @@ inline bool IsServerAuthInput(EGMC_PredictionMode Mode)
 inline bool IsServerAuthOutput(EGMC_PredictionMode Mode)
 {
   return IsServerAuthOutputClientValidated(Mode) || IsServerAuthOutputServerValidated(Mode);
+}
+
+inline bool IsPeriodic(EGMC_SimulationMode Mode)
+{
+  return
+    Mode == EGMC_SimulationMode::Periodic_Input ||
+    Mode == EGMC_SimulationMode::Periodic_Output ||
+    Mode == EGMC_SimulationMode::Periodic_InputOutput;
+}
+
+inline bool IsPeriodicInput(EGMC_SimulationMode Mode)
+{
+  return
+    Mode == EGMC_SimulationMode::Periodic_Input ||
+    Mode == EGMC_SimulationMode::Periodic_InputOutput;
+}
+
+inline bool IsPeriodicOutput(EGMC_SimulationMode Mode)
+{
+  return
+    Mode == EGMC_SimulationMode::Periodic_Output ||
+    Mode == EGMC_SimulationMode::Periodic_InputOutput;
+}
+
+inline bool IsPeriodicAndOnChange(EGMC_SimulationMode Mode)
+{
+  return
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_Input ||
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_Output ||
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_InputOutput;
+}
+
+inline bool IsPeriodicAndOnChangeInput(EGMC_SimulationMode Mode)
+{
+  return
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_Input ||
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_InputOutput;
+}
+
+inline bool IsPeriodicAndOnChangeOutput(EGMC_SimulationMode Mode)
+{
+  return
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_Output ||
+    Mode == EGMC_SimulationMode::PeriodicAndOnChange_InputOutput;
 }

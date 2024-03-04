@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -50,6 +50,9 @@ struct FGMC_MetaData
 
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
   bool bValidClientMove{false};
+
+  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
+  bool bPlayerOwned{false};
 };
 
 UENUM(BlueprintType)

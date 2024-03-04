@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCPawn.h"
 #include "GMCAggregator.h"
@@ -116,7 +116,6 @@ bool AGMC_Pawn::IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTar
   }
   else if (const auto& MovementBase = GetMovementBase())
   {
-    gmc_ck(IsValid(ReplicationComponent))
     const auto& BaseActor = MovementBase->GetOwner();
     if (IsValid(BaseActor))
     {
@@ -188,7 +187,6 @@ void AGMC_Pawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
   if (!IsValid(ReplicationComponent))
   {
-    GMC_LOG(LogGMCPawn, this, Error, TEXT("No movement component of type \"%s\" found."), TO_STR(UGMC_ReplicationCmp))
     return;
   }
 
@@ -311,8 +309,6 @@ void AGMC_Pawn::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracke
 
   if (!IsValid(ReplicationComponent))
   {
-    GMC_LOG(LogGMCPawn, this, Error, TEXT("No movement component of type \"%s\" found."), TO_STR(UGMC_ReplicationCmp))
-    gmc_ckne()
     return;
   }
 

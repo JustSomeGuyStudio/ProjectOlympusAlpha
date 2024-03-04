@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCReplicationComponent.h"
 #include "GMCPlayerController.h"
@@ -178,7 +178,7 @@ namespace GMCCVars
 #endif
 }
 
-UGMC_ReplicationCmp::UGMC_ReplicationCmp()
+UGMC_ReplicationCmp::UGMC_ReplicationCmp(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   SetIsReplicatedByDefault(false);
 }
@@ -247,9 +247,9 @@ void UGMC_ReplicationCmp::OnWorldTickEnd(UWorld* World, ELevelTick TickType, flo
   // Call after WorldTickEnd event in case the pawn state was changed in it.
   if (const auto& Controller = Cast<AGMC_PlayerController>(PawnOwner->GetController()))
   {
-    if (Controller->WasAutonomousProxyCameraManagerUpdateDeferred())
+    if (Controller->WasCameraManagerUpdateDeferred())
     {
-      CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, Controller, CL_ManualUpdateCamera, DeltaTime);
+      CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, Controller, ManualUpdateCamera, DeltaTime);
     }
   }
 }
@@ -483,37 +483,37 @@ bool UGMC_ReplicationCmp::IsReadyForPlay() const
 
 FGMC_Move& UGMC_ReplicationCmp::LocalMove()
 {
-  gmc_ck(IsValid(PawnOwner))
+  gmc_ck(Cast<AGMC_Pawn>(PawnOwner))
   return GetGMCPawnOwner()->LocalMove;
 }
 
 const FGMC_Move& UGMC_ReplicationCmp::LocalMove() const
 {
-  gmc_ck(IsValid(PawnOwner))
+  gmc_ck(Cast<AGMC_Pawn>(PawnOwner))
   return GetGMCPawnOwner()->LocalMove;
 }
 
 FGMC_Move& UGMC_ReplicationCmp::APMove()
 {
-  gmc_ck(IsValid(PawnOwner))
+  gmc_ck(Cast<AGMC_Pawn>(PawnOwner))
   return GetGMCPawnOwner()->APMove;
 }
 
 const FGMC_Move& UGMC_ReplicationCmp::APMove() const
 {
-  gmc_ck(IsValid(PawnOwner))
+  gmc_ck(Cast<AGMC_Pawn>(PawnOwner))
   return GetGMCPawnOwner()->APMove;
 }
 
 FGMC_Move& UGMC_ReplicationCmp::SPMove()
 {
-  gmc_ck(IsValid(PawnOwner))
+  gmc_ck(Cast<AGMC_Pawn>(PawnOwner))
   return GetGMCPawnOwner()->SPMove;
 }
 
 const FGMC_Move& UGMC_ReplicationCmp::SPMove() const
 {
-  gmc_ck(IsValid(PawnOwner))
+  gmc_ck(Cast<AGMC_Pawn>(PawnOwner))
   return GetGMCPawnOwner()->SPMove;
 }
 
@@ -677,6 +677,7 @@ void UGMC_ReplicationCmp::UpdateLocallyControlledServerPawn()
   LocalMove().MetaData.bIsUsingClientAuthPhysics = IsUsingClientAuthPhysicsReplication();
   LocalMove().MetaData.bPredictedClientMove = false;
   LocalMove().MetaData.bValidClientMove = false;
+  LocalMove().MetaData.bPlayerOwned = static_cast<bool>(Cast<APlayerController>(GetController()));
 
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreLocalMoveExecution, LocalMove());
 
@@ -779,8 +780,18 @@ void UGMC_ReplicationCmp::UpdateRemotelyControlledServerPawn()
   gmc_ck(NumMovesToExecute <= NumPendingMoves)
 
   TArray<FGMC_Move> MovesToExecute{SV_RemoteMoveExecutionAux.PendingMoves.GetData(), NumMovesToExecute};
+
   SV_ExecuteClientMoves(MovesToExecute);
-  SV_RemoteMoveExecutionAux.PendingMoves.RemoveAt(0, NumMovesToExecute, false);
+
+  if (SV_RemoteMoveExecutionAux.PendingMoves.Num() >= NumMovesToExecute)
+  {
+    SV_RemoteMoveExecutionAux.PendingMoves.RemoveAt(0, NumMovesToExecute, false);
+  }
+  else
+  {
+    // The pending moves array could have been cleared during move execution if ClearTransientData was called from somewhere.
+    gmc_ck(SV_RemoteMoveExecutionAux.PendingMoves.IsEmpty())
+  }
 
   gmc_ck(SV_RemoteMoveExecutionAux.PendingMoves.Num() <= MaxNumBufferedRemoteMoves)
 
@@ -799,7 +810,7 @@ void UGMC_ReplicationCmp::UpdateAutonomousProxyPawn()
     return;
   }
 
-  if (!PawnOwner->Controller)
+  if (!Cast<APlayerController>(PawnOwner->GetController()))
   {
     // Can happen during possession change.
     return;
@@ -812,6 +823,7 @@ void UGMC_ReplicationCmp::UpdateAutonomousProxyPawn()
   LocalMove().MetaData.bIsUsingClientAuthPhysics = false;
   LocalMove().MetaData.bPredictedClientMove = false;
   LocalMove().MetaData.bValidClientMove = false;
+  LocalMove().MetaData.bPlayerOwned = false;
 
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreLocalMoveExecution, LocalMove());
 
@@ -908,6 +920,13 @@ void UGMC_ReplicationCmp::SimulatePawn()
   gmc_ck(!IsNetMode(NM_DedicatedServer))
   gmc_ck(!SimulationAux.bIsSimulating)
 
+  ++SimulationAux.NumFramesSinceLastSimulation;
+
+  if (!ShouldSimulatePawn(SimulationThrottle.MaxSmoothingDistance, SimulationThrottle.SmoothingFallOffDistance, SimulationThrottle.MaxSkippedSmoothingFrames))
+  {
+    return;
+  }
+
   const auto& World = GetWorld();
   if (!World)
   {
@@ -923,6 +942,7 @@ void UGMC_ReplicationCmp::SimulatePawn()
   }
 
   SimulationAux.bIsSimulating = true;
+  SimulationAux.NumFramesSinceLastSimulation = 0;
 
   const int32 MoveHistoryNum = MoveHistory.Num();
   const float DeltaTime = World->DeltaRealTimeSeconds;
@@ -972,6 +992,10 @@ void UGMC_ReplicationCmp::CL_OnRepAPMove()
   gmc_ck(APMove().MetaData.Timestamp > CL_MoveExecutionAux.LastReceivedMoveTimestamp)
 
   CL_MoveExecutionAux.LastReceivedMoveTimestamp = APMove().MetaData.Timestamp;
+
+  gmc_ck(APMove().MetaData.bPlayerOwned)
+
+  ComponentStatus.bIsPlayerOwned = true;
 
   DEBUG_LOG_CLIENT_MOVE_TRACE_CLIENT_RECEIVED_APMOVE
 
@@ -1182,6 +1206,8 @@ void UGMC_ReplicationCmp::CL_OnRepSPMove()
 
   CL_MoveExecutionAux.LastReceivedMoveTimestamp = SPMove().MetaData.Timestamp;
 
+  ComponentStatus.bIsPlayerOwned = SPMove().MetaData.bPlayerOwned;
+
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, CL_OnSPMoveReceived, SPMove());
 
   if (!IsGMCEnabled() || !IsReadyForPlay())
@@ -1317,22 +1343,23 @@ void UGMC_ReplicationCmp::CL_PostReplay_Implementation()
   }
 }
 
-void UGMC_ReplicationCmp::PreLocalMoveExecution_Implementation(const FGMC_Move& LocalMove)
+void UGMC_ReplicationCmp::CL_SwapNoPredictionBuffer(EGMC_NetContext Context)
 {
   if (IsNonPredictedAutonomousProxy() && CL_NoPredictionSwapBuffer.bInitialized)
   {
-    CL_NoPredictionSwapBuffer.Swap(false, this, EGMC_NetContext::LocalClientPawn_PreMoveExecutionNoPrediction);
-    CL_OnSwapNoPredictionBuffer(CL_NoPredictionSwapBuffer.Buffer, EGMC_NetContext::LocalClientPawn_PreMoveExecution);
+    CL_NoPredictionSwapBuffer.Swap(false, this, Context);
+    CL_OnSwapNoPredictionBuffer(CL_NoPredictionSwapBuffer.Buffer, Context);
   }
+}
+
+void UGMC_ReplicationCmp::PreLocalMoveExecution_Implementation(const FGMC_Move& LocalMove)
+{
+  CL_SwapNoPredictionBuffer(EGMC_NetContext::LocalClientPawn_PreMoveExecutionNoPrediction);
 }
 
 void UGMC_ReplicationCmp::PostLocalMoveExecution_Implementation(const FGMC_Move& ExecutedMove)
 {
-  if (IsNonPredictedAutonomousProxy() && CL_NoPredictionSwapBuffer.bInitialized)
-  {
-    CL_NoPredictionSwapBuffer.Swap(false, this, EGMC_NetContext::LocalClientPawn_PostMoveExecutionNoPrediction);
-    CL_OnSwapNoPredictionBuffer(CL_NoPredictionSwapBuffer.Buffer, EGMC_NetContext::LocalClientPawn_PostMoveExecutionNoPrediction);
-  }
+  CL_SwapNoPredictionBuffer(EGMC_NetContext::LocalClientPawn_PostMoveExecutionNoPrediction);
 }
 
 void UGMC_ReplicationCmp::PrePlayerTick_Implementation(float DeltaTime)
@@ -1345,18 +1372,13 @@ void UGMC_ReplicationCmp::PrePlayerTick_Implementation(float DeltaTime)
       CL_OnInitNoPredictionBuffer(CL_NoPredictionSwapBuffer.Buffer);
     }
 
-    CL_NoPredictionSwapBuffer.Swap(false, this, EGMC_NetContext::LocalClientPawn_PrePlayerTickNoPrediction);
-    CL_OnSwapNoPredictionBuffer(CL_NoPredictionSwapBuffer.Buffer, EGMC_NetContext::LocalClientPawn_PrePlayerTickNoPrediction);
+    CL_SwapNoPredictionBuffer(EGMC_NetContext::LocalClientPawn_PrePlayerTickNoPrediction);
   }
 }
 
 void UGMC_ReplicationCmp::PostPlayerTick_Implementation(float DeltaTime)
 {
-  if (IsNonPredictedAutonomousProxy() && CL_NoPredictionSwapBuffer.bInitialized)
-  {
-    CL_NoPredictionSwapBuffer.Swap(false, this, EGMC_NetContext::LocalClientPawn_PostPlayerTickNoPrediction);
-    CL_OnSwapNoPredictionBuffer(CL_NoPredictionSwapBuffer.Buffer, EGMC_NetContext::LocalClientPawn_PostPlayerTickNoPrediction);
-  }
+  CL_SwapNoPredictionBuffer(EGMC_NetContext::LocalClientPawn_PostPlayerTickNoPrediction);
 }
 
 void UGMC_ReplicationCmp::OnServerAuthPhysicsSimulationToggled_Implementation(bool bEnabled, FGMC_ServerAuthPhysicsSettings Settings)
@@ -1640,38 +1662,45 @@ void UGMC_ReplicationCmp::ManageDynamicBufferTime()
 
   DEBUG_LOG_DYNAMIC_BUFFER_TIME_VALUATION
 
-  if (!DynamicBufferTimeAux.CanRequest())
+  const auto& GameInstance = PawnOwner->GetGameInstance();
+  if (!GameInstance)
+  {
+    gmc_ckne()
+    return;
+  }
+
+  // A listen server will also have a local controller.
+  const auto& LocalController = Cast<AGMC_PlayerController>(GameInstance->GetFirstLocalPlayerController());
+  if (!LocalController)
+  {
+    gmc_ckne()
+    return;
+  }
+
+  if (!DynamicBufferTimeAux.CanRequest(this, LocalController))
   {
     return;
   }
 
-  if (UGameInstance* GameInstance = PawnOwner->GetGameInstance())
+  if (DynamicBufferTimeAux.Request(this))
   {
-    // A listen server will also have a local controller.
-    const auto& LocalController = Cast<AGMC_PlayerController>(GameInstance->GetFirstLocalPlayerController());
-    if (LocalController)
+    gmc_ck(DynamicBufferTimeAux.HasPendingBufferTime())
+
+    if (IsSmoothedListenServerPawn())
     {
-      if (DynamicBufferTimeAux.Request(this))
-      {
-        gmc_ck(DynamicBufferTimeAux.HasPendingBufferTime())
-
-        if (IsSmoothedListenServerPawn())
-        {
-          // Listen server pawns do not need to be notified of a new requested buffer time, they just read the local value directly.
-          AdaptiveDelayParams.SV_SmoothedRemoteServerPawnUpdateTimer = AdaptiveDelayParams.SyncInterval + AdaptiveDelayParams.SYNC_INTERVAL_VARIANCE;
-          gmc_ck(AdaptiveDelayParams.BufferTime != DynamicBufferTimeAux.RequestedBufferTime)
-        }
-        else
-        {
-          LocalController->SV_RequestAdaptiveDelayBufferTime(FGMC_AdaptiveDelayClientPacket{this, DynamicBufferTimeAux.RequestedBufferTime});
-        }
-
-        DEBUG_LOG_DYNAMIC_BUFFER_TIME_REQUEST
-      }
-
-      gmc_ck(DynamicBufferTimeAux.RequestTimer == 0.)
+      // Listen server pawns do not need to be notified of a new requested buffer time, they just read the local value directly.
+      AdaptiveDelayParams.SV_SmoothedRemoteServerPawnUpdateTimer = AdaptiveDelayParams.SyncInterval + AdaptiveDelayParams.SYNC_INTERVAL_VARIANCE;
+      gmc_ck(AdaptiveDelayParams.BufferTime != DynamicBufferTimeAux.RequestedBufferTime)
     }
+    else
+    {
+      LocalController->SV_RequestAdaptiveDelayBufferTime(FGMC_AdaptiveDelayClientPacket{this, DynamicBufferTimeAux.RequestedBufferTime});
+    }
+
+    DEBUG_LOG_DYNAMIC_BUFFER_TIME_REQUEST
   }
+
+  gmc_ck(DynamicBufferTimeAux.RequestTimer == 0.)
 }
 
 void UGMC_ReplicationCmp::ManageAdaptiveSimulationDelay()
@@ -2145,6 +2174,7 @@ void UGMC_ReplicationCmp::SV_ExecuteClientMoves(TArray<FGMC_Move>& ClientMoves, 
     ClientMove.MetaData.bIsUsingClientAuthPhysics = bIsUsingClientAuthPhysics;
     ClientMove.MetaData.bPredictedClientMove = bUseClientPrediction;
     ClientMove.MetaData.bValidClientMove = SV_RemoteMoveExecutionAux.bLastClientMoveWasValid;
+    ClientMove.MetaData.bPlayerOwned = true;
 
     if (bIsUsingServerAuthPhysics)
     {
@@ -2511,6 +2541,7 @@ void UGMC_ReplicationCmp::SV_UpdateLocalAdaptiveDelay()
   // We could just set the simulation delay directly every frame, but to prevent the value from changing too frequently and to get consistent behaviour for all
   // simulated pawns we'll use the same mechanism that we use for the client pawns here.
   if (
+    !bAppliedNewDynamicBufferTime &&
     AdaptiveDelayParams.CurrentDelay > 0.f &&
     AdaptiveDelayParams.SV_SmoothedRemoteServerPawnUpdateTimer < AdaptiveDelayParams.SV_GetInternalSyncInterval()
   )
@@ -2540,7 +2571,10 @@ void UGMC_ReplicationCmp::SV_UpdateClientAdaptiveDelays()
   gmc_ck(InterpolationMode == EGMC_InterpolationMode::AdaptiveDelay)
 
   const auto& World = GetWorld();
-  if (!World) return;
+  if (!World)
+  {
+    return;
+  }
 
   for (auto PCIterator = World->GetPlayerControllerIterator(); PCIterator; ++PCIterator)
   {
@@ -2569,6 +2603,39 @@ void UGMC_ReplicationCmp::SV_UpdateClientAdaptiveDelays()
     auto& ClientData = AdaptiveDelayParams.SV_PerClientParams.FindOrAdd(ClientController);
     auto& ClientParameters = ClientData.Parameters;
     auto& NewestClientParameters = ClientParameters[AdaptiveDelayParams.NUM_SAVED_PARAMS - 1];
+
+    // Never skip on the first run (when no delay value has been set yet) and always re-sync when a full update interval has passed.
+    const bool bIsTimeToUpdate = NewestClientParameters.DelayValue <= 0.f ||  ClientData.UpdateTimer >= AdaptiveDelayParams.SV_GetInternalSyncInterval();
+
+    if (ClientController->bCullNonPlayerServerPawnParams && !IsPlayerControlledPawn())
+    {
+      FGMC_AdaptiveDelayServerPacket NonPlayerPawnParams{};
+      if (!ClientController->SV_ShouldEnqueueNonPlayerPawnAdaptiveDelay(this, NonPlayerPawnParams))
+      {
+        const bool bNonPlayerPawnParamsValid = static_cast<bool>(NonPlayerPawnParams.TargetComponent);
+
+        if (!bNonPlayerPawnParamsValid || !bIsTimeToUpdate)
+        {
+          return;
+        }
+
+        // Copy the parameters from the reference non-player pawn.
+
+        FMemory::Memmove(
+          &ClientParameters[0], &ClientParameters[1], sizeof(FGMC_AdaptiveDelayPersistentParams::FAux) * (AdaptiveDelayParams.NUM_SAVED_PARAMS - 1)
+        );
+
+        NewestClientParameters.DelayValue = NonPlayerPawnParams.DelayValue;
+        NewestClientParameters.DynamicBufferTime = NonPlayerPawnParams.DynamicBufferTime;
+        NewestClientParameters.SyncTime = NonPlayerPawnParams.SyncTime;
+
+        ClientData.RequestedDynamicBufferTime = 0.f;
+        ClientData.AppliedDynamicBufferTime = 0.f;
+        ClientData.UpdateTimer = 0.f;
+
+        return;
+      }
+    }
 
     const double CurrentTime = GetTime();
     if (CurrentTime < NewestClientParameters.SyncTime)
@@ -2654,10 +2721,7 @@ void UGMC_ReplicationCmp::SV_UpdateClientAdaptiveDelays()
 
     ProposedDelay = FMath::Clamp(ProposedDelay, AdaptiveDelayParams.MIN_TOTAL_DELAY, AdaptiveDelayParams.MAX_TOTAL_DELAY);
 
-    if (
-      NewestClientParameters.DelayValue > 0.f && // Never skip on the first run.
-      ClientData.UpdateTimer < AdaptiveDelayParams.SV_GetInternalSyncInterval() // Always resend when a full update interval has passed.
-    )
+    if (!bAppliedNewDynamicBufferTime /*always inform the client that the requested buffer time was applied*/ && !bIsTimeToUpdate)
     {
       if (FMath::IsNearlyEqual(ProposedDelay, NewestClientParameters.DelayValue, AdaptiveDelayParams.Tolerance))
       {
@@ -2700,6 +2764,7 @@ void UGMC_ReplicationCmp::SV_UpdateClientAdaptiveDelays()
 
     // Enqueue the new parameters to have them transmitted to the client on the next tick.
     ClientController->SV_EnqueueAdaptiveDelay(
+      this,
       FGMC_AdaptiveDelayServerPacket{
         this,
         NewestClientParameters.DelayValue,
@@ -2816,27 +2881,65 @@ bool UGMC_ReplicationCmp::SV_ProcessProxyMove()
 
 void UGMC_ReplicationCmp::SV_UpdateAdaptiveDelayBufferTime(APlayerController* ClientController, float NewBufferTime)
 {
-  if (!AdaptiveDelayParams.bUseDynamicBufferTime)
+  const auto& GMCClientController = Cast<AGMC_PlayerController>(ClientController);
+
+  if (!IsGMCEnabled() || !AdaptiveDelayParams.bUseDynamicBufferTime)
   {
+    GMCClientController->SV_ResetNumRejectedBufferTimeRequests();
     return;
   }
-
-  auto& ClientData = AdaptiveDelayParams.SV_PerClientParams.FindOrAdd(ClientController);
 
   gmc_ck(NewBufferTime > 0.f)
 
-  if (
-    FMath::IsNearlyEqual(
-      ClientData.RequestedDynamicBufferTime, NewBufferTime, 1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
-    ) ||
-    FMath::IsNearlyEqual(
-      ClientData.AppliedDynamicBufferTime, NewBufferTime, 1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
-    )
-  )
+  auto& ClientData = AdaptiveDelayParams.SV_PerClientParams.FindOrAdd(ClientController);
+
+  gmc_ck(GMCClientController)
+
+  // In rare cases the server and client may be out of sync regarding the last applied dynamic buffer time (e.g. if a delay value was not sent due to too many
+  // pending reliable RPCs). If this happens, the client may continuously request a new buffer time, which is then repeatedly rejected by the server. Therefore,
+  // we limit the amount of times that the server can reject the request to give the client a chance a get back in sync if necessary.
+  if (GMCClientController->SV_CanRejectClientBufferTimeRequest())
   {
-    // The requested buffer time was already received and/or applied.
-    return;
+    if (
+      FMath::IsNearlyEqual(
+        ClientData.RequestedDynamicBufferTime, NewBufferTime, 1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
+      ) ||
+      FMath::IsNearlyEqual(
+        ClientData.AppliedDynamicBufferTime, NewBufferTime, 1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
+      )
+    )
+    {
+      // The requested buffer time was probably already received and/or applied.
+
+      GMCClientController->SV_IncrementNumRejectedBufferTimeRequests();
+
+      GMC_LOG(
+        LogGMCReplication,
+        PawnOwner,
+        Verbose,
+        TEXT("Client buffer time request rejected (requested = %f, pending = %f, applied = %f)."),
+        NewBufferTime,
+        ClientData.RequestedDynamicBufferTime,
+        ClientData.AppliedDynamicBufferTime
+      )
+
+      return;
+    }
   }
+  else
+  {
+    GMC_LOG(
+      LogGMCReplication,
+      PawnOwner,
+      Verbose,
+      TEXT("Client exceeded the maximum amount of allowed buffer time rejections (requested = %f, pending = %f, applied = %f)."),
+      NewBufferTime,
+      ClientData.RequestedDynamicBufferTime,
+      ClientData.AppliedDynamicBufferTime
+    )
+  }
+
+  GMCClientController->SV_ResetNumRejectedBufferTimeRequests();
 
   GMCCompression::Round(NewBufferTime, FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION);
   ClientData.RequestedDynamicBufferTime = NewBufferTime;
@@ -3326,13 +3429,60 @@ void UGMC_ReplicationCmp::CL_UpdateLocalAdaptiveDelay()
       // A value greater than zero means that the parameters contain a dynamic buffer time received from the server (which we previously requested).
       AdaptiveDelayParams.BufferTime = NewestParameters.DynamicBufferTime;
 
-      if (
-        FMath::IsNearlyEqual(
-          AdaptiveDelayParams.BufferTime,
-          DynamicBufferTimeAux.RequestedBufferTime,
-          1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
-        )
-      )
+      const auto& GameInstance = PawnOwner->GetGameInstance();
+      if (!GameInstance)
+      {
+        gmc_ckne()
+        return;
+      }
+
+      const auto& LocalController = Cast<AGMC_PlayerController>(GameInstance->GetFirstLocalPlayerController());
+      if (!LocalController)
+      {
+        gmc_ckne()
+        return;
+      }
+
+      if (LocalController->bCullNonPlayerServerPawnParams && !IsPlayerControlledPawn())
+      {
+        if (const auto& RefPawn = Cast<AGMC_Pawn>(LocalController->GetRefNonPlayerPawn()))
+        {
+          if (GetPawnOwner() != RefPawn)
+          {
+            // If this is not the ref pawn we never requested a buffer time for this pawn to begin with, we need to check whether the ref pawn received the
+            // requested buffer time.
+
+            const auto& RefComponent = RefPawn->GetReplicationComponent();
+            if (!RefComponent)
+            {
+              return;
+            }
+
+            const bool bRefPawnReceivedRequestedBufferTime = FMath::IsNearlyEqual(
+              RefComponent->AdaptiveDelayParams.BufferTime,
+              RefComponent->DynamicBufferTimeAux.RequestedBufferTime,
+              1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
+            );
+
+            if (bRefPawnReceivedRequestedBufferTime)
+            {
+              DynamicBufferTimeAux.Apply(this);
+
+              DEBUG_LOG_DYNAMIC_BUFFER_TIME_APPLY
+            }
+
+            return;
+          }
+        }
+      }
+
+      const bool bReceivedRequestedBufferTime = FMath::IsNearlyEqual(
+        AdaptiveDelayParams.BufferTime,
+        DynamicBufferTimeAux.RequestedBufferTime,
+        1.f / (int32)FGMC_AdaptiveDelayPersistentParams::DYNAMIC_BUFFER_TIME_COMPRESSION
+      );
+
+      if (bReceivedRequestedBufferTime)
       {
         DynamicBufferTimeAux.Apply(this);
 
@@ -3549,9 +3699,9 @@ bool UGMC_ReplicationCmp::CL_ShouldUseSmoothCorrections() const
   return SmoothCorrection.bEnable && !bAlwaysReplay && IsPredictedAutonomousProxy();
 }
 
-bool UGMC_ReplicationCmp::ShouldDeferAutonomousProxyCameraManagerUpdate() const
+bool UGMC_ReplicationCmp::ShouldDeferCameraManagerUpdate() const
 {
-  return (CL_ShouldUseSmoothCorrections() && CL_SmoothCorrection.HasData()) || IsNonPredictedAutonomousProxy();
+  return true;
 }
 
 void UGMC_ReplicationCmp::CL_HandleSmoothCorrectionOnReplayStart()
@@ -3945,6 +4095,7 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
   {
     SimulationAux.ExtrapolationRecoveryTimer = -1.f;
     SimulationAux.ExtrapolationRecoveryStartState = FGMC_PawnState{};
+    SimulationAux.bPerformExtrapolationRecoveryInWorldSpace = false;
     return;
   }
 
@@ -3959,9 +4110,7 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
   const bool bResumingInterpolation = SimulationAux.bWasExtrapolatingLastUpdate || SimulationAux.bTriggerManualExtrapolationRecovery;
   const bool bRecoveryInProgress = !SimulationAux.bWasExtrapolatingLastUpdate && SimulationAux.ExtrapolationRecoveryTimer > 0.f;
 
-  // Only reset this here, which effectively queues the extrapolation recovery until it can be performed.
   gmc_ck(SimulationAux.bTriggerManualExtrapolationRecovery ? SimulationAux.ExtrapolationRecoveryTimer == -1.f : true)
-  SimulationAux.bTriggerManualExtrapolationRecovery = false;
 
   if (bResumingInterpolation)
   {
@@ -3970,19 +4119,25 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
     SimulationAux.ExtrapolationRecoveryTimer = DeltaTime;
     SimulationAux.ExtrapolationRecoveryStartState = StartState;
 
-    // We write the current pawn state in world space already so make sure the actor base is null here, otherwise the values will get transformed again during
-    // the recovery interpolation.
-    SimulationAux.ExtrapolationRecoveryStartState.ActorBase.Write(nullptr);
-    SimulationAux.ExtrapolationRecoveryStartState.ActorLocation.Write(GetActorLocation_GMC());
-    SimulationAux.ExtrapolationRecoveryStartState.ActorRotation.Write(GetActorRotation_GMC());
-    SimulationAux.ExtrapolationRecoveryStartState.ActorScale.Write(GetActorScale_GMC());
-    SimulationAux.ExtrapolationRecoveryStartState.ControlRotation.Write(GetControllerRotation_GMC());
+    // Extrapolation recovery uses relative values by default.
+    SimulationAux.bPerformExtrapolationRecoveryInWorldSpace = false;
+
+    if (SimulationAux.bTriggerManualExtrapolationRecovery)
+    {
+      SimulationAux.bPerformExtrapolationRecoveryInWorldSpace = SimulationAux.bManualExtrapolationRecoveryInWorldSpace;
+    }
+
+    // Only reset this here, which effectively queues the extrapolation recovery until it can be performed.
+    SimulationAux.bTriggerManualExtrapolationRecovery = false;
+    SimulationAux.bManualExtrapolationRecoveryInWorldSpace = false;
   }
   else if (bRecoveryInProgress)
   {
     // Recovery has already started in a previous frame.
     gmc_ck(SimulationAux.ExtrapolationRecoveryTimer > 0.f)
     gmc_ck(!SimulationAux.bWasExtrapolatingLastUpdate)
+    gmc_ck(!SimulationAux.bTriggerManualExtrapolationRecovery)
+    gmc_ck(!SimulationAux.bManualExtrapolationRecoveryInWorldSpace)
     SimulationAux.ExtrapolationRecoveryTimer += DeltaTime;
   }
   else
@@ -3990,6 +4145,9 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
     // Regular interpolation is currently in progress, no recovery needed.
     gmc_ck(SimulationAux.ExtrapolationRecoveryTimer == -1.f)
     gmc_ck(!SimulationAux.bWasExtrapolatingLastUpdate)
+    gmc_ck(!SimulationAux.bTriggerManualExtrapolationRecovery)
+    gmc_ck(!SimulationAux.bManualExtrapolationRecoveryInWorldSpace)
+    SimulationAux.NumAbortedExtrapolationRecoveries = 0;
     return;
   }
 
@@ -3998,17 +4156,48 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
     // Recovery is complete this frame.
     SimulationAux.ExtrapolationRecoveryTimer = -1.f;
     SimulationAux.ExtrapolationRecoveryStartState = FGMC_PawnState{};
+    SimulationAux.bPerformExtrapolationRecoveryInWorldSpace = false;
+    SimulationAux.NumAbortedExtrapolationRecoveries = 0;
     return;
   }
 
+  // Always use world space values when the actor base differs.
+  const bool bHasSameActorBase = SimulationAux.ExtrapolationRecoveryStartState.ActorBase.Read() == InterpolatedState.ActorBase.Read();
+  SimulationAux.bPerformExtrapolationRecoveryInWorldSpace |= !bHasSameActorBase;
+
   gmc_ck(SimulationAux.ExtrapolationRecoveryTimer > 0.f)
   gmc_ck(SimulationAux.ExtrapolationRecoveryTimer < RecoveryTime)
-  gmc_ck(!SimulationAux.ExtrapolationRecoveryStartState.ActorBase.Read())
+  gmc_ck(!SimulationAux.bPerformExtrapolationRecoveryInWorldSpace ? bHasSameActorBase : true)
+
+  if (SimulationAux.NumAbortedExtrapolationRecoveries > SimulationAux.RECOVERY_JITTER_GUARD_NUM)
+  {
+    // Stop extrapolation recoveries until the connection has stabilized again.
+    return;
+  }
 
   Alpha = SimulationAux.ExtrapolationRecoveryTimer / RecoveryTime;
 
   gmc_ck(Alpha > 0.f)
   gmc_ck(Alpha < 1.f)
+
+  const bool bTransformValues = !SimulationAux.bPerformExtrapolationRecoveryInWorldSpace && static_cast<bool>(InterpolatedState.ActorBase.Read());
+
+  if (!SimulationAux.bPerformExtrapolationRecoveryInWorldSpace)
+  {
+    // The interpolated sync data is always in world space, but for extrapolation recovery we want to interpolate relative values.
+    ToRelativeSyncData(InterpolatedState, InterpolatedState.ActorBase.Read(), DataFilter::None, DataFilterMode::Inclusive, this);
+  }
+  else
+  {
+    const auto& RecoveryStartStateBase = SimulationAux.ExtrapolationRecoveryStartState.ActorBase.Read();
+    if (RecoveryStartStateBase)
+    {
+      ToAbsoluteSyncData(SimulationAux.ExtrapolationRecoveryStartState, RecoveryStartStateBase, DataFilter::None, DataFilterMode::Inclusive, this);
+
+      // Set to null once transformed, the rest of the extrapolation recovery will be in world space.
+      SimulationAux.ExtrapolationRecoveryStartState.ActorBase.Write(nullptr);
+    }
+  }
 
   FGMC_PawnState RecoveryState = InterpolateSyncData_ExtrapolationRecovery(
     SimulationAux.ExtrapolationRecoveryStartState,
@@ -4017,7 +4206,7 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
     InterpolatedState,
     Alpha,
     ToNativeState(InterpStates),
-    false, /*the interpolation states are already in world space*/
+    false, /*use the values as provided*/
     DataFilter::SV_ReplicateForSimulation,
     DataFilterMode::Exclusive,
     ReplicationSettings,
@@ -4026,10 +4215,51 @@ void UGMC_ReplicationCmp::ExtrapolationRecovery(
     this
   );
 
-  if (bRecoverActorLocation) InterpolatedState.ActorLocation.Write(RecoveryState.ActorLocation.Read());
-  if (bRecoverActorRotation) InterpolatedState.ActorRotation.Write(RecoveryState.ActorRotation.Read());
-  if (bRecoverActorScale) InterpolatedState.ActorScale.Write(RecoveryState.ActorScale.Read());
-  if (bRecoverControlRotation) InterpolatedState.ControlRotation.Write(RecoveryState.ControlRotation.Read());
+  const FVector& StartStateActorLocation = SimulationAux.ExtrapolationRecoveryStartState.ActorLocation.Read();
+  const FVector& InterpolatedStateActorLocation = InterpolatedState.ActorLocation.Read();
+  if (
+    bRecoverActorLocation &&
+    FVector::Distance(StartStateActorLocation, InterpolatedStateActorLocation) >= SimulationAux.RECOVER_ACTOR_LOCATION_THRESHOLD
+  )
+  {
+    InterpolatedState.ActorLocation.Write(RecoveryState.ActorLocation.Read());
+  }
+
+  const FQuat& StartStateActorRotation = SimulationAux.ExtrapolationRecoveryStartState.ActorRotation.Read().Quaternion();
+  const FQuat& InterpolatedStateActorRotation = InterpolatedState.ActorRotation.Read().Quaternion();
+  if (
+    bRecoverActorRotation &&
+    FMath::RadiansToDegrees(StartStateActorRotation.AngularDistance(InterpolatedStateActorRotation)) >= SimulationAux.RECOVER_ACTOR_ROTATION_THRESHOLD
+  )
+  {
+    InterpolatedState.ActorRotation.Write(RecoveryState.ActorRotation.Read());
+  }
+
+  const FVector& StartStateActorScale = SimulationAux.ExtrapolationRecoveryStartState.ActorScale.Read();
+  const FVector& InterpolatedStateActorScale = InterpolatedState.ActorScale.Read();
+  if (
+    bRecoverActorScale &&
+    FVector::Distance(StartStateActorScale, InterpolatedStateActorScale) >= SimulationAux.RECOVER_ACTOR_SCALE_THRESHOLD
+  )
+  {
+    InterpolatedState.ActorScale.Write(RecoveryState.ActorScale.Read());
+  }
+
+  const FQuat& StartStateControlRotation = SimulationAux.ExtrapolationRecoveryStartState.ControlRotation.Read().Quaternion();
+  const FQuat& InterpolatedStateControlRotation = InterpolatedState.ControlRotation.Read().Quaternion();
+  if (
+    bRecoverControlRotation &&
+    FMath::RadiansToDegrees(StartStateControlRotation.AngularDistance(InterpolatedStateControlRotation))
+      >= SimulationAux.RECOVER_ACTOR_CONTROL_ROTATION_THRESHOLD
+  )
+  {
+    InterpolatedState.ControlRotation.Write(RecoveryState.ControlRotation.Read());
+  }
+
+  if (!SimulationAux.bPerformExtrapolationRecoveryInWorldSpace)
+  {
+    ToAbsoluteSyncData(InterpolatedState, InterpolatedState.ActorBase.Read(), DataFilter::None, DataFilterMode::Inclusive, this);
+  }
 }
 
 FGMC_PhysicsInterpState UGMC_ReplicationCmp::InterpolatePhysicsState(
@@ -4534,6 +4764,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
       SimulationAux.PrevSmoothingTime = OutSimTime;
       SimulationAux.bIsCumulativeUpdate = bCumulativeUpdate;
       SimulationAux.bIsExtrapolating = true;
+      SimulationAux.NumAbortedExtrapolationRecoveries += SimulationAux.ExtrapolationRecoveryTimer > 0.f;
       SimulationAux.ExtrapolationRecoveryTimer = -1.f;
       SimulationAux.ExtrapolationRecoveryStartState = FGMC_PawnState{};
       bDidExtrapolate = true;
@@ -4723,6 +4954,54 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
   )
 
   DEBUG_LOG_EXTRAPOLATION
+}
+
+bool UGMC_ReplicationCmp::ShouldSimulatePawn(double MaxSmoothingDistance, double SmoothingFallOffDistance, int32 MaxSkippedSmoothingFrames) const
+{
+  if (!SimulationThrottle.bEnable || !GEngine)
+  {
+    return true;
+  }
+
+  const auto& LocalPC = Cast<AGMC_PlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
+  if (!IsValid(LocalPC))
+  {
+    return true;
+  }
+
+  FVector LocalPCPosition{0.};
+
+  if (const auto& LocalPCPawn = LocalPC->GetPawn())
+  {
+    LocalPCPosition = LocalPCPawn->GetActorLocation();
+  }
+  else
+  {
+    LocalPC->GetPlayerViewPoint(LocalPCPosition, UNUSED(FRotator));
+  }
+
+  const double DistanceToLocalPC = (GetActorLocation_GMC() - LocalPCPosition).Size();
+
+  const double FallOffMin = FMath::Max(0., MaxSmoothingDistance);
+  const double FallOffMax = FMath::Max(FallOffMin + UU_MILLIMETER, MaxSmoothingDistance + SmoothingFallOffDistance);
+
+  if (DistanceToLocalPC <= FallOffMin)
+  {
+    return true;
+  }
+
+  gmc_ck(FallOffMax > FallOffMin)
+
+  const float InvRatio = 1. - (DistanceToLocalPC - FallOffMin) / (FallOffMax - FallOffMin);
+  const int32 NumFramesToSkip =
+    FMath::Clamp(FMath::CeilToInt(1.f / FMath::Clamp(InvRatio, UE_KINDA_SMALL_NUMBER, 1.f)) - 1, 0, FMath::Max(1, MaxSkippedSmoothingFrames));
+
+  if (SimulationAux.NumFramesSinceLastSimulation > NumFramesToSkip)
+  {
+    return true;
+  }
+
+  return false;
 }
 
 EGMC_NetContext UGMC_ReplicationCmp::GetSmoothingContext() const
@@ -5206,6 +5485,11 @@ bool UGMC_ReplicationCmp::SV_SwapRollbackState(AGMC_Pawn* Pawn) const
   if (!ReplicationComponent)
   {
     GMC_LOG(LogGMCReplication, PawnOwner, Warning, TEXT("Unwind failed: the target pawn does not have a replication component."))
+    return false;
+  }
+
+  if (!ReplicationComponent->SV_RemoteMoveExecutionAux.bIsRolledBack)
+  {
     return false;
   }
 
@@ -6171,7 +6455,7 @@ void UGMC_ReplicationCmp::RestoreRolledBackGenericActors(
 
 AGMC_Pawn* UGMC_ReplicationCmp::GetGMCPawnOwner() const
 {
-  return IsValid(PawnOwner) ? Cast<AGMC_Pawn>(PawnOwner) : nullptr;
+  return Cast<AGMC_Pawn>(PawnOwner);
 }
 
 bool UGMC_ReplicationCmp::CL_IsReplaying() const
@@ -6238,11 +6522,13 @@ bool UGMC_ReplicationCmp::WasExtrapolatingLastUpdate() const
   return SimulationAux.bWasExtrapolatingLastUpdate;
 }
 
-void UGMC_ReplicationCmp::TriggerExtrapolationRecovery()
+void UGMC_ReplicationCmp::TriggerExtrapolationRecovery(bool bInWorldSpace)
 {
-  SimulationAux.bTriggerManualExtrapolationRecovery = true;
   SimulationAux.ExtrapolationRecoveryTimer = -1.f;
   SimulationAux.ExtrapolationRecoveryStartState = FGMC_PawnState{};
+  SimulationAux.bTriggerManualExtrapolationRecovery = true;
+  SimulationAux.bManualExtrapolationRecoveryInWorldSpace = bInWorldSpace;
+  SimulationAux.NumAbortedExtrapolationRecoveries = 0;
 }
 
 bool UGMC_ReplicationCmp::IsPerformingExtrapolationRecovery() const
@@ -6788,6 +7074,21 @@ USceneComponent* UGMC_ReplicationCmp::GetActorBase() const
   return nullptr;
 }
 
+bool UGMC_ReplicationCmp::IsServerBot() const
+{
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
+  if (PawnOwner->GetLocalRole() == ROLE_Authority && PawnOwner->IsLocallyControlled() && Cast<AAIController>(PawnOwner->GetController()))
+  {
+    return true;
+  }
+
+  return false;
+}
+
 bool UGMC_ReplicationCmp::IsUsingClientPrediction() const
 {
   return bUseClientPrediction;
@@ -6852,25 +7153,61 @@ bool UGMC_ReplicationCmp::IsGMCEnabled() const
 
 bool UGMC_ReplicationCmp::IsAutonomousProxy() const
 {
-  if (!IsValid(PawnOwner)) return false;
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
   return PawnOwner->GetLocalRole() == ROLE_AutonomousProxy;
 }
 
 bool UGMC_ReplicationCmp::IsSimulatedProxy() const
 {
-  if (!IsValid(PawnOwner)) return false;
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
   return PawnOwner->GetLocalRole() == ROLE_SimulatedProxy;
+}
+
+bool UGMC_ReplicationCmp::IsPlayerControlledSimulatedProxy() const
+{
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
+  return PawnOwner->GetLocalRole() == ROLE_SimulatedProxy && IsPlayerControlledPawn();
+}
+
+bool UGMC_ReplicationCmp::IsNonPlayerControlledSimulatedProxy() const
+{
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
+  return PawnOwner->GetLocalRole() == ROLE_SimulatedProxy && !IsPlayerControlledPawn();
 }
 
 bool UGMC_ReplicationCmp::IsLocallyControlledServerPawn() const
 {
-  if (!IsValid(PawnOwner)) return false;
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
   return PawnOwner->GetLocalRole() == ROLE_Authority && PawnOwner->IsLocallyControlled();
 }
 
 bool UGMC_ReplicationCmp::IsRemotelyControlledServerPawn() const
 {
-  if (!IsValid(PawnOwner)) return false;
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
   return PawnOwner->GetLocalRole() == ROLE_Authority && PawnOwner->GetController() && !PawnOwner->IsLocallyControlled();
 }
 
@@ -6909,6 +7246,11 @@ bool UGMC_ReplicationCmp::IsSmoothedListenServerPawn() const
   return bSmoothRemoteListenServerPawn && IsRemotelyControlledListenServerPawn();
 }
 
+bool UGMC_ReplicationCmp::IsPlayerControlledPawn() const
+{
+  return ComponentStatus.bIsPlayerOwned;
+}
+
 bool UGMC_ReplicationCmp::IsClientPawn() const
 {
   if (!IsValid(PawnOwner)) return false;
@@ -6934,16 +7276,6 @@ bool UGMC_ReplicationCmp::IsServerPawn() const
 bool UGMC_ReplicationCmp::IsSimulatedPawn() const
 {
   return IsSimulatedProxy() || IsSmoothedListenServerPawn() || IsNonPredictedAutonomousProxy();
-}
-
-bool UGMC_ReplicationCmp::IsServerBot() const
-{
-  if (!IsValid(PawnOwner)) return false;
-  if (PawnOwner->GetLocalRole() == ROLE_Authority && PawnOwner->IsLocallyControlled() && Cast<AAIController>(PawnOwner->GetController()))
-  {
-    return true;
-  }
-  return false;
 }
 
 bool UGMC_ReplicationCmp::IsNetworkedServer() const
@@ -7029,8 +7361,6 @@ FGMC_NumericValue UGMC_ReplicationCmp::InterpolateValue(
       default:
         return InterpolateNearestNeighbour(StartValue, TargetValue, Ratio);
     }
-    gmc_ckne()
-    return FGMC_NumericValue{EGMC_NumericType::Float, 0};
   }
 
   switch (static_cast<EGMC_InterpolationFunction>(Function))
@@ -7468,6 +7798,7 @@ void FGMC_Move::NetSerializeClientMove(FArchive& Ar, UPackageMap* Map, const AAc
   gmc_ck(!MetaData.bIsUsingClientAuthPhysics)
   gmc_ck(!MetaData.bPredictedClientMove)
   gmc_ck(!MetaData.bValidClientMove)
+  gmc_ck(!MetaData.bPlayerOwned)
   gmc_ckc(
     if (Ar.IsSaving())
     {
@@ -7533,6 +7864,7 @@ void FGMC_Move::NetSerializeAutonomousProxyState(FArchive& Ar, UPackageMap* Map,
     {
       gmc_ck(IsValid(TargetConnection))
       gmc_ck(MetaData.DeltaTime > 0.f)
+      gmc_ck(MetaData.bPlayerOwned)
       if (MetaData.bIsUsingServerAuthPhysics)
       {
         gmc_ck(MetaData.ServerAuthPhysicsTimestamp > 0.)
@@ -7587,6 +7919,9 @@ void FGMC_Move::NetSerializeAutonomousProxyState(FArchive& Ar, UPackageMap* Map,
       Ar.SerializeBits(&MetaData.bValidClientMove, 1);
     }
   }
+
+  // The autonomous proxy is always player-owned.
+  MetaData.bPlayerOwned = true;
 
   // Always serialize fully for autonomous proxies to avoid erroneous replays due to lost packets.
   constexpr bool bForceFullSerialization = true;
@@ -7669,6 +8004,8 @@ void FGMC_Move::NetSerializeSimulatedProxyState(FArchive& Ar, UPackageMap* Map, 
       gmc_ck(!MetaData.bIsUsingClientAuthPhysics)
     }
   }
+
+  Ar.SerializeBits(&MetaData.bPlayerOwned, 1);
 
   bool bForceFullSerialization =
     !NetInfo.OwningComponent->bUseConditionalNetSerialization ||
@@ -7896,6 +8233,37 @@ bool FGMC_ClientAuthPhysicsSettings::NetSerialize(FArchive& Ar, UPackageMap* Map
   Ar.SerializeBits(&bRollbackGenericClientActors, 1);
 
   return (bOutSuccess = true);
+}
+
+void UGMC_ReplicationCmp::FComponentStatus::SaveFrameInfo(bool bDidUpdate, const UGMC_ReplicationCmp* const Outer)
+{
+  bDidGMCUpdateLastFrame = bDidUpdate;
+  ControllerLastFrame = Outer->GetController();
+  NetRoleLastFrame = Outer->PawnOwner ? Outer->PawnOwner->GetLocalRole() : ROLE_None;
+
+  if (Outer->GetNetMode() < NM_Client)
+  {
+    bIsPlayerOwned = static_cast<bool>(Cast<APlayerController>((Outer->GetController())));
+  }
+  else if (Outer->IsAutonomousProxy())
+  {
+    bIsPlayerOwned = true;
+  }
+  else if (Outer->IsSimulatedProxy())
+  {
+    bIsPlayerOwned = Outer->SPMove().MetaData.bPlayerOwned;
+  }
+  else
+  {
+    // Client-spawned or "ROLE_None".
+    bIsPlayerOwned = false;
+  }
+}
+
+bool UGMC_ReplicationCmp::FComponentStatus::ShouldClearTransientData(const UGMC_ReplicationCmp* const Outer) const
+{
+  gmc_ck(IsValid(Outer->PawnOwner))
+  return !bDidGMCUpdateLastFrame || ControllerLastFrame != Outer->GetController() || NetRoleLastFrame != Outer->PawnOwner->GetLocalRole();
 }
 
 void UGMC_ReplicationCmp::FSyncDataSwapBuffer::Initialize(bool bUseRelative, UGMC_ReplicationCmp* const Outer)
@@ -8620,8 +8988,35 @@ bool UGMC_ReplicationCmp::FDynamicBufferTimeAux::HasPendingBufferTime() const
   return RequestedBufferTime != 0.f;
 }
 
-bool UGMC_ReplicationCmp::FDynamicBufferTimeAux::CanRequest() const
+bool UGMC_ReplicationCmp::FDynamicBufferTimeAux::CanRequest(UGMC_ReplicationCmp* const Outer, AGMC_PlayerController* const LocalController)
 {
+  if (LocalController->bCullNonPlayerServerPawnParams && !Outer->IsPlayerControlledPawn())
+  {
+    const auto& RefNonPlayerPawn = LocalController->GetRefNonPlayerPawn();
+
+    if (!RefNonPlayerPawn)
+    {
+      // We have no reference pawn yet, wait for an update from the server.
+
+      GMC_LOG(
+        LogGMCReplication,
+        Outer->GetPawnOwner(),
+        Verbose,
+        TEXT("No non-player reference pawn is set, cannot request buffer time.")
+      )
+
+      return false;
+    }
+
+    if (Outer->GetPawnOwner() != RefNonPlayerPawn)
+    {
+      // The client can only request buffer times for the reference pawn.
+      RequestTimer = 0.;
+      RequestedBufferTime = 0.f;
+      return false;
+    }
+  }
+
   return RequestTimer >= REQUEST_RETRY_INTERVAL;
 }
 

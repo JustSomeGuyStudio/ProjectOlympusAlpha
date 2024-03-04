@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 using System;
 using System.IO;
@@ -28,7 +28,8 @@ public class GMCCore : ModuleRules
       "AIModule",
       "UMG",
       "EnhancedInput",
-      "GameplayTags"
+      "GameplayTags", 
+      "GASCompanion"
     });
 
     // Public include directories.

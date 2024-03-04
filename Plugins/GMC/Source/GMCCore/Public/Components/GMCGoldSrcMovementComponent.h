@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -25,7 +25,7 @@ class GMCCORE_API UGMC_GoldSrcMovementCmp : public UGMC_OrganicMovementCmp
 
 public:
 
-  UGMC_GoldSrcMovementCmp();
+  UGMC_GoldSrcMovementCmp(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
   ///~ Begin UActorComponent Interface
   void BeginPlay() override;
@@ -106,26 +106,34 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual bool IsUsingNoClipMode() const;
 
-protected:
-
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_WantsToSprint{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_WantsToCrouch{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_WantsToJump{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_CanJump{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_JustLandedPostPhysics{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_JustJumped{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_JustLanded{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_IsSprinting{-1};
+
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_MaxSpeed{-1};
+
+protected:
 
   ///~ Begin UGMC_ReplicationCmp Interface
   void BindReplicationData_Implementation() override;
@@ -457,7 +465,7 @@ protected:
   float EdgeFrictionMinRequiredHeight{50.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|GoldSrc|On Ground")
-  /// If false the edge friction multiplier will be applied as soon as the outer edge of the collision shape is over the ledge. If true the edge friction
+  /// If false, the edge friction multiplier will be applied as soon as the outer edge of the collision shape is over the ledge. If true, the edge friction
   /// multiplier will be applied only after the center of the pawn's collision shape is already over the ledge.
   bool bUseAltEdgeFriction{false};
 
@@ -516,7 +524,7 @@ protected:
   float WaterJumpPush{600.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement|GoldSrc|In Water")
-  /// If false swimming controls with use an "AbsoluteZ" input scheme. If true swimming controls will be fully relative to the player's view rotation.
+  /// If false, swimming controls with use an "AbsoluteZ" input scheme. If true, swimming controls will be fully relative to the player's view rotation.
   bool bUseAltSwimControls{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay, meta =
@@ -525,10 +533,10 @@ protected:
   float SpeedHardCap{10000.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
-  /// If true the crouch walk speed will already be applied while partially crouching.
+  /// If true, the crouch walk speed will already be applied while partially crouching.
   bool bImmediateCrouchWalkSpeed{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
-  /// If true the configured mass of the pawn will affect the height of the jump.
+  /// If true, the configured mass of the pawn will affect the height of the jump.
   bool bConsiderMassOnJump{false};
 };

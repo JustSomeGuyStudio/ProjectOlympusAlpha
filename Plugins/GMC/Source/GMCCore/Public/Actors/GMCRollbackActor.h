@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -30,7 +30,8 @@ class GMCCORE_API AGMC_RollbackActor : public AActor
 
 public:
 
-  AGMC_RollbackActor();
+  AGMC_RollbackActor(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
   void BeginPlay() override;
   void Tick(float DeltaTime) override;
   FVector GetVelocity() const override;
@@ -126,7 +127,7 @@ public:
   bool HasTicked() const;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking")
-  /// If true this actor will never be rolled back by a pawn for move execution and won't be ticked from the replication component. This will effectively make
+  /// If true, this actor will never be rolled back by a pawn for move execution and won't be ticked from the replication component. This will effectively make
   /// it behave like a regular (non-rollback) actor.
   bool bExcludeFromRollback{false};
 

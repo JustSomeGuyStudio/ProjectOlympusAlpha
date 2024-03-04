@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -15,7 +15,8 @@ class GMCCORE_API AGMC_Aggregator : public AActor
 
 public:
 
-  AGMC_Aggregator();
+  AGMC_Aggregator(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
   void Tick(float DeltaTime) override;
 
   /// Returns the aggregator (if present). There must never be more than one instance of this actor in a world.

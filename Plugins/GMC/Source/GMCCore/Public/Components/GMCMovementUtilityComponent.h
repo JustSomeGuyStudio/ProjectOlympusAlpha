@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -427,6 +427,10 @@ UCLASS(ClassGroup = "Movement", BlueprintType, Blueprintable, meta = (BlueprintS
 class GMCCORE_API UGMC_MovementUtilityCmp : public UGMC_ReplicationCmp
 {
   GENERATED_BODY()
+
+public:
+
+  UGMC_MovementUtilityCmp(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 protected:
 
@@ -1526,7 +1530,7 @@ public:
   /// @param        TraceLength     The length of the trace.
   /// @param        Tolerance       The tolerance to use for checking if the floor data is dirty.
   /// @param        bAutoAdjust     Whether the pawn position should be adjusted if the floor update fails due to initial penetrations.
-  /// @param        bForceUpdate    If true the floor will be updated even when the floor data is not dirty.
+  /// @param        bForceUpdate    If true, the floor will be updated even when the floor data is not dirty.
   /// @returns      bool            True if the floor was updated, false otherwise.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual bool UpdateFloor(
@@ -1588,7 +1592,7 @@ public:
   /// @param        InterpSpeed        How quickly the target value should be reached.
   /// @param        InterpTolerance    Factor the test extent is scaled with (see SetRootCollisionExtentSafe).
   /// @param        DeltaTime          The delta time to use. If <= 0 the currently set physics delta time will be used.
-  /// @param        bInterpBoxY        Only relevant if the root collision is a box shape. If true the Y-extent of the box collision will be interpolated
+  /// @param        bInterpBoxY        Only relevant if the root collision is a box shape. If true, the Y-extent of the box collision will be interpolated
   ///                                  instead of the X-extent.
   /// @returns      float              The absolute difference in width that was actually applied to the root collision shape.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")

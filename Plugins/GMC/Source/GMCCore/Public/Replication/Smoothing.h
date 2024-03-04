@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -256,7 +256,7 @@ struct FGMC_AdaptiveDelayPersistentParams
   float SyncInterval{2.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking", AdvancedDisplay, meta = (ClampMin = "0", UIMin = "0.1", UIMax = "5"))
-  /// If true the client will request the buffer time dynamically from the server based on the current network conditions. Works best for good connections
+  /// If true, the client will request the buffer time dynamically from the server based on the current network conditions. Works best for good connections
   /// (little packet loss) and higher net update frequencies.
   bool bUseDynamicBufferTime{true};
 
@@ -321,7 +321,7 @@ struct FGMC_AdaptiveDelayPersistentParams
   struct FAux
   {
     float DelayValue{0.f}; // Total delay value (also contains the buffer time).
-    float DynamicBufferTime{0.f}; // The applied dynamic buffer time, only relevant when bUseDynamicBufferTime is enabled.
+    float DynamicBufferTime{0.f}; // The applied dynamic buffer time (only relevant when bUseDynamicBufferTime is enabled).
     double SyncTime{0.}; // The time at which to apply the new total delay value.
   };
 

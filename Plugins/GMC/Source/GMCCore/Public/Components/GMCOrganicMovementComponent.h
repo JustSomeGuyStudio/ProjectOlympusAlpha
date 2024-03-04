@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -324,7 +324,7 @@ struct GMCCORE_API FGMC_RelBasedMovementAux
   TObjectPtr<USceneComponent> CL_OriginalReplayMoveBase{nullptr};
 
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
-  FRotator CL_OriginalReplayMoveBaseRotation{};
+  FRotator CL_OriginalReplayMoveBaseRotation{0.};
 
   UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
   FRotator ActorBaseRotation{0.};
@@ -339,7 +339,7 @@ struct GMCCORE_API FGMC_RelBasedMovementAux
   void CL_PreReplay(UGMC_OrganicMovementCmp* const Outer);
   void CL_PostReplay(UGMC_OrganicMovementCmp* const Outer);
   void SV_HandleBaseTransition(UGMC_OrganicMovementCmp* const Outer, float DeltaSeconds);
-  void EqualizeBase(bool bEqualize, bool bLocalMove, UGMC_OrganicMovementCmp* const Outer);
+  void EqualizeBase(bool bEqualize, bool bMoveAllPawns, UGMC_OrganicMovementCmp* const Outer);
   void OnCumulativeMoveInitialized(FGMC_PawnState& InputState, UGMC_OrganicMovementCmp* const Outer);
   void UpdateSavedRelativeTransform(bool bSimulated, UGMC_OrganicMovementCmp* const Outer);
   void HandleMoveIgnoreActors(bool bSimulated, UGMC_OrganicMovementCmp* const Outer);
@@ -385,10 +385,6 @@ struct FGMC_MontagePrediction
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   // The combine mode to use for the montage "paused" flag. Cannot be changed at runtime.
   EGMC_CombineMode MontagePausedCombineMode{EGMC_CombineMode::AlwaysCombine};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // If true, montages without root motion will also trigger replays.
-  bool bCorrectNonRootMotionMontages{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0", UIMax = "0.5"))
   // The time over which to blend the animation after a replay when montage data was corrected.
@@ -575,7 +571,7 @@ class GMCCORE_API UGMC_OrganicMovementCmp : public UGMC_MovementUtilityCmp, publ
 
 public:
 
-  UGMC_OrganicMovementCmp();
+  UGMC_OrganicMovementCmp(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
   void BeginPlay() override;
   void SetUpdatedComponent(USceneComponent* NewUpdatedComponent) override;
@@ -630,8 +626,6 @@ public:
   /// The minimum location distance required between start and target state to smooth out a simulated base change.
   static constexpr float SMOOTH_SIMULATED_BASE_CHANGE_MIN_LOC_DIFF = 150.f;
 
-protected:
-
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_RawInputVector{-1};
 
@@ -665,11 +659,12 @@ protected:
   UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
   int32 BI_RelBasedMovementAux_ActorBaseRotation{-1};
 
+protected:
+
   void BindReplicationData_Implementation() override;
   void WorldTickStart_Implementation(float DeltaTime) override;
   void WorldTickEnd_Implementation(float DeltaTime) override;
   bool CL_ShouldUseSmoothCorrections() const override;
-  bool ShouldDeferAutonomousProxyCameraManagerUpdate() const override;
   void ClearTransientData(bool bResetMoves = true) override;
   void SetupPlayerInputComponent_Implementation(UInputComponent* PlayerInputComponent) override;
   bool SV_OnProxyMoveInitialized_Implementation(FGMC_Move& Move, float DeltaTime, double Timestamp) override;
@@ -681,18 +676,13 @@ protected:
   void OnClientAuthPhysicsSimulationToggled_Implementation(bool bEnabled, FGMC_ClientAuthPhysicsSettings Settings) override;
   void OnClientPredictionEnabled_Implementation() override;
   void OnClientPredictionDisabled_Implementation() override;
+  void OnGMCEnabled_Implementation() override;
   void OnGMCDisabled_Implementation() override;
   void PreLocalMoveExecution_Implementation(const FGMC_Move& LocalMove) override;
   void SV_PreRemoteMoveExecution_Implementation(const FGMC_Move& RemoteMove) override;
   void PostLocalMoveExecution_Implementation(const FGMC_Move& ExecutedMove) override;
   void SV_PostRemoteMoveExecution_Implementation(const FGMC_Move& RemoteMove) override;
   void CL_PreReplayMoveExecution_Implementation(const FGMC_Move& ReplayMove) override;
-  bool CL_IsAllowedToReplay_Implementation(
-    EGMC_SyncType DeviatingSyncType,
-    int32 DeviatingSyncTypeIndex,
-    const FGMC_PawnState& DeviatingState,
-    const FGMC_PawnState& ServerState
-  ) override;
   void CL_PreAdoptStateForReplay(const FGMC_Move& APMove, const FGMC_Move& SourceMove) override;
   void CL_PreReplay_Implementation() override;
   void CL_PostReplay_Implementation() override;
@@ -1186,10 +1176,11 @@ protected:
 
   /// Updates the pawn's location and rotation relative to the base component when based movement is relative.
   ///
+  /// @param        bSimulated    Whether simulated values should be retrieved from the saved transforms struct.
   /// @returns      void
   UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "General Movement Component")
-  void MoveWithBaseRelative();
-  virtual void MoveWithBaseRelative_Implementation();
+  void MoveWithBaseRelative(bool bSimulated);
+  virtual void MoveWithBaseRelative_Implementation(bool bSimulated);
 
   /// Determines whether a pawn should be moved for base equalization.
   ///
@@ -1837,20 +1828,6 @@ protected:
     const TArray<const FAnimNotifyEvent*>& MontageNotifyEndEvents,
     float DeltaSeconds
   );
-
-  /// Checks if a replay should be allowed based on the values of the montage tracker.
-  ///
-  /// @param        DeviatingSyncType         The deviating sync type that triggered the replay.
-  /// @param        DeviatingSyncTypeIndex    The index of the deviating value if it is a generic sync type.
-  /// @param        DeviatingClientState      The validated state containing the deviating data.
-  /// @param        ServerState               The server state that the client state was validated against.
-  /// @returns      bool                      True if the client is allowed to perform the replay based on montage values, false otherwise.
-  virtual bool CL_AllowReplayBasedOnMontageValues(
-    EGMC_SyncType DeviatingSyncType,
-    int32 DeviatingSyncTypeIndex,
-    const FGMC_PawnState& DeviatingState,
-    const FGMC_PawnState& ServerState
-  ) const;
 
   /// Changes the visual montage state in the anim instance according to the updated montage tracker values after a client replay.
   ///

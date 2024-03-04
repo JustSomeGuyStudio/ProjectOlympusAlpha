@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCMovementUtilityComponent.h"
 #include "GMCPawn.h"
@@ -32,6 +32,9 @@ namespace GMCCVars
 
 #endif
 }
+
+UGMC_MovementUtilityCmp::UGMC_MovementUtilityCmp(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+{}
 
 void UGMC_MovementUtilityCmp::PredictionTick(
   const FGMC_PawnState& InputState,

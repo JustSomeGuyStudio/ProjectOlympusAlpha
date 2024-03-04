@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -14,7 +14,8 @@ class GMCCORE_API UGMC_CapsuleCmp : public UCapsuleComponent
 
 public:
 
-  UGMC_CapsuleCmp();
+  UGMC_CapsuleCmp(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
   FBoxSphereBounds CalcBounds(const FTransform& LocalToWorld) const override;
   void CalcBoundingCylinder(float& CylinderRadius, float& CylinderHalfHeight) const override;
 

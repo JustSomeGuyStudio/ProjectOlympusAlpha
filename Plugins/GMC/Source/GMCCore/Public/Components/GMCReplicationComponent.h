@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -86,6 +86,28 @@ struct FGMC_SmoothCorrection
   bool bSmoothControlRotation{true};
 };
 
+USTRUCT(BlueprintType)
+struct FGMC_SimulationThrottle
+{
+  GENERATED_BODY()
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether simulation throttling should be used.
+  bool bEnable{false};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1000", UIMax = "10000"))
+  // The distance from the local player up to which simulated pawns will still be smoothed every frame.
+  double MaxSmoothingDistance{5000.};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1000", UIMax = "10000"))
+  // The distance over which simulation frequency will drop exponentially once the max smoothing distance has been exceeded.
+  double SmoothingFallOffDistance{5000.};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "1", UIMin = "5", UIMax = "100"))
+  // How many frames should be skipped at most between simulations.
+  int32 MaxSkippedSmoothingFrames{30};
+};
+
 /// Synchronises the transform, velocity and any user-defined data for server and client pawns across the network.
 UCLASS(ClassGroup = "Movement", HideCategories = ("Velocity", "Hidden"), BlueprintType, Blueprintable, meta = (BlueprintSpawnableComponent))
 class GMCCORE_API UGMC_ReplicationCmp : public UPawnMovementComponent
@@ -101,7 +123,8 @@ class GMCCORE_API UGMC_ReplicationCmp : public UPawnMovementComponent
 
 public:
 
-  UGMC_ReplicationCmp();
+  UGMC_ReplicationCmp(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
   void InitializeComponent() override;
   void SetUpdatedComponent(class USceneComponent* NewUpdatedComponent);
   void BeginPlay() override;
@@ -604,6 +627,18 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   bool IsSimulatedProxy() const;
 
+  /// Checks if we are a simulated proxy on a client that is controlled by a player (either another client or a listen server player).
+  ///
+  /// @returns      bool    True if our net role is ROLE_SimulatedProxy and we are owned by another player, false otherwise.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  bool IsPlayerControlledSimulatedProxy() const;
+
+  /// Checks if we are a simulated proxy on a client that is not controlled by a player elsewhere.
+  ///
+  /// @returns      bool    True if our net role is ROLE_SimulatedProxy and we are not owned by another player, false otherwise.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  bool IsNonPlayerControlledSimulatedProxy() const;
+
   /// Check if we are the autonomous or a simulated proxy on a client.
   ///
   /// @returns      bool    True if this pawn is an autonomous or simulated proxy, false otherwise.
@@ -683,18 +718,18 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   bool IsSmoothedListenServerPawn() const;
 
+  /// Checks if we are controlled by a player (either another client or a listen server player).
+  ///
+  /// @returns      bool    True if we are controlled by a player, false otherwise.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  bool IsPlayerControlledPawn() const;
+
   /// Checks if we are a simulated pawn. Simulated pawns are all pawns that are subject to being smoothed at some point on the current machine. These can be
   /// simulated proxies, smoothed listen server pawns and non-predicted autonomous proxies.
   ///
   /// @returns      bool    True if we are a simulated pawn, false otherwise.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   bool IsSimulatedPawn() const;
-
-  /// Check if we are a server pawn that is locally controlled by AI.
-  ///
-  /// @returns      bool    True if this pawn is a bot on the server, false otherwise.
-  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  bool IsServerBot() const;
 
   /// Check if we are on a network server (i.e. not a client and not running in standalone).
   ///
@@ -907,9 +942,10 @@ public:
 
   /// Can be used to manually trigger a recovery to the next smoothing state. Only available available for delay based interpolation modes.
   ///
+  /// @param        bInWorldSpace    Whether the recovery should be performed with absolute or relative values.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void TriggerExtrapolationRecovery();
+  void TriggerExtrapolationRecovery(bool bInWorldSpace);
 
   /// Tells us if an extrapolation recovery is currently in progress.
   ///
@@ -1307,6 +1343,12 @@ public:
   /// @returns      Base    The component the owning pawn is currently based on.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   virtual USceneComponent* GetActorBase() const;
+
+  /// Check if we are a server pawn that is locally controlled by AI.
+  ///
+  /// @returns      bool    True if this pawn is a bot on the server, false otherwise.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual bool IsServerBot() const;
 
   /// Utility function to enables/disable server-authoritative physics simulation of the pawn's root component while also handling the required networking
   /// related configuration. The client will be informed of a state change via RPC (reliable) and OnServerAuthPhysicsSimulationToggled will be called for both
@@ -1749,6 +1791,8 @@ protected:
 
     bool bIsUsingClientAuthPhysicsReplication{false};
 
+    bool bIsPlayerOwned{false};
+
     double ElapsedRealTimeSinceSpawn{0.};
 
     bool bIsExecutingLocalMove{false};
@@ -1757,18 +1801,9 @@ protected:
 
     bool bIsExecutingSimulatedMove{false};
 
-    void SaveFrameInfo(bool bDidUpdate, const UGMC_ReplicationCmp* const Outer)
-    {
-      bDidGMCUpdateLastFrame = bDidUpdate;
-      ControllerLastFrame = Outer->GetController();
-      NetRoleLastFrame = Outer->PawnOwner ? Outer->PawnOwner->GetLocalRole() : ROLE_None;
-    }
+    void SaveFrameInfo(bool bDidUpdate, const UGMC_ReplicationCmp* const Outer);
 
-    bool ShouldClearTransientData(const UGMC_ReplicationCmp* const Outer) const
-    {
-      gmc_ck(IsValid(Outer->PawnOwner))
-      return !bDidGMCUpdateLastFrame || ControllerLastFrame != Outer->GetController() || NetRoleLastFrame != Outer->PawnOwner->GetLocalRole();
-    }
+    bool ShouldClearTransientData(const UGMC_ReplicationCmp* const Outer) const;
   };
 
   FComponentStatus ComponentStatus{};
@@ -2004,6 +2039,13 @@ public:
 
 protected:
 
+  /// Swaps the no-prediction buffer of a client (if initialized).
+  ///
+  /// @param        Context    The context in which the buffer is being swapped.
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual void CL_SwapNoPredictionBuffer(EGMC_NetContext Context);
+
   /// Overridable function for custom checks to determine whether a move should be enqueued as a new move in the move history or combined with the previous one.
   /// This is only called when essential built-in checks have not already made the decision.
   ///
@@ -2075,10 +2117,10 @@ protected:
   /// @returns      bool    True if the client should use smooth corrections, false otherwise.
   virtual bool CL_ShouldUseSmoothCorrections() const;
 
-  /// Whether to force a deferred camera manager update for the autonomous proxy.
+  /// Whether to force a deferred camera manager update. By default the update will always be deferred.
   ///
-  /// @returns      bool    True if the camera manager update for the autonomous proxy should be deferred to the end of the world tick, false otherwise.
-  virtual bool ShouldDeferAutonomousProxyCameraManagerUpdate() const;
+  /// @returns      bool    True if the camera manager update should be deferred to the end of the world tick, false otherwise.
+  virtual bool ShouldDeferCameraManagerUpdate() const;
 
   /// Called when the buffer for non-predicted autonomous proxies is initialized.
   ///
@@ -2769,7 +2811,7 @@ private:
 
     bool HasPendingBufferTime() const;
 
-    bool CanRequest() const;
+    bool CanRequest(UGMC_ReplicationCmp* const Outer, AGMC_PlayerController* const LocalController);
 
     float GetRequestHoldTime(UGMC_ReplicationCmp* const Outer) const;
 
@@ -2827,6 +2869,8 @@ private:
     // Only relevant for cumulative smoothing.
     bool bIsCumulativeUpdate{false};
 
+    uint64 NumFramesSinceLastSimulation{0};
+
     FVector ExtrapolationStartLocation{0.};
 
     double AccExtrapolatedDistance{0.};
@@ -2839,11 +2883,23 @@ private:
 
     bool bWasExtrapolatingLastUpdate{false};
 
-    bool bTriggerManualExtrapolationRecovery{false};
-
     float ExtrapolationRecoveryTimer{-1.f};
 
     FGMC_PawnState ExtrapolationRecoveryStartState{};
+
+    bool bPerformExtrapolationRecoveryInWorldSpace{false};
+
+    bool bTriggerManualExtrapolationRecovery{false};
+
+    bool bManualExtrapolationRecoveryInWorldSpace{false};
+
+    uint64 NumAbortedExtrapolationRecoveries{0};
+
+    static constexpr int32 RECOVERY_JITTER_GUARD_NUM = 10;
+    static constexpr double RECOVER_ACTOR_LOCATION_THRESHOLD = 0.01;
+    static constexpr double RECOVER_ACTOR_ROTATION_THRESHOLD = 0.01;
+    static constexpr double RECOVER_ACTOR_SCALE_THRESHOLD = 0.01;
+    static constexpr double RECOVER_ACTOR_CONTROL_ROTATION_THRESHOLD = 0.01;
 
     void PreTick(UGMC_ReplicationCmp* const Outer);
 
@@ -2855,21 +2911,27 @@ private:
       PrevSmoothingTime = -1.;
       bIsSimulating = false;
       bIsCumulativeUpdate = false;
+      NumFramesSinceLastSimulation = 0;
       ExtrapolationStartLocation = FVector::ZeroVector;
       AccExtrapolatedDistance = 0.;
       AbsoluteExtrapolatedDistance = 0.;
       bMaxExtrapolationDistanceReached = false;
       bIsExtrapolating = false;
       bWasExtrapolatingLastUpdate = false;
-      bTriggerManualExtrapolationRecovery = false;
       ExtrapolationRecoveryTimer = -1.f;
       ExtrapolationRecoveryStartState = FGMC_PawnState{};
+      bPerformExtrapolationRecoveryInWorldSpace = false;
+      bTriggerManualExtrapolationRecovery = false;
+      bManualExtrapolationRecoveryInWorldSpace = false;
+      NumAbortedExtrapolationRecoveries = 0;
     }
   };
 
   FSimulationAux SimulationAux{};
 
   void SmoothMovement(float DeltaTime, double& OutSimTime, int32& OutTargetIdx, TArray<int32>& OutSkippedStateIndices);
+
+  bool ShouldSimulatePawn(double MaxSmoothingDistance, double SmoothingFallOffDistance, int32 MaxSkippedSmoothingFrames) const;
 
   EGMC_NetContext GetSmoothingContext() const;
 
@@ -2977,7 +3039,7 @@ public:
   FGMC_DefaultReplicationSettings ReplicationSettings{};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Smoothing")
-  /// If true all built-in smoothing logic will be skipped. Enable if you want to handle simulated pawns completely by yourself through the simulation tick.
+  /// If true, all built-in smoothing logic will be skipped. Enable if you want to handle simulated pawns completely by yourself through the simulation tick.
   bool bNoSmoothing{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Smoothing")
@@ -3036,6 +3098,10 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Smoothing")
   /// Whether states that were skipped during the current smoothing iteration should be passed to the simulation tick.
   bool bDetermineSkippedSmoothingStates{false};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Smoothing")
+  /// The settings for distance-based simulation throttling.
+  FGMC_SimulationThrottle SimulationThrottle{};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client")
   /// Predict the movement of the client locally to hide network latency.
@@ -3163,7 +3229,7 @@ public:
   double GenericClientActorRollbackRadius{2500.};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Lag Compensation")
-  /// If true this pawn will never be rolled back by any other pawn for move execution.
+  /// If true, this pawn will never be rolled back by any other pawn for move execution.
   bool bExcludeFromRollback{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Lag Compensation")
@@ -3211,7 +3277,7 @@ public:
 ///=============================================================================================================================================================
 /// Data binding
 
-protected:
+public:
 
   ///***********************************************************************************************************************************************************
   /// Binding functions to integrate variables into the replication system. It is strongly recommended to only bind members of the movement component itself.

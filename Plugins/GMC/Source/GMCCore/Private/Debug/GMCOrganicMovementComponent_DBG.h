@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #undef FLog
@@ -53,13 +53,16 @@
 #define DEBUG_STAT_AND_LOG_ORGANIC_MOVEMENT_VALUES\
   if (GMCCVars::StatOrganicMovementValues != 0 || GMCCVars::LogOrganicMovementValues != 0)\
   {\
-    const FVector Location = UpdatedComponent->GetComponentLocation();\
-    const FVector FrameLocationDelta = Location - GetStartLocation();\
+    const FVector Location = GetActorLocation_GMC();\
+    const FRotator Rotation = GetActorRotation_GMC();\
+    const FRotator ControlRotation = GetControllerRotation_GMC();\
     if (GMCCVars::StatOrganicMovementValues != 0)\
     {\
       DEBUG_PRINT_MSG(0, "Force : %s", *GetTransientForce().ToString())\
       DEBUG_PRINT_MSG(0, "Acceleration : %s", *GetTransientAcceleration().ToString())\
       DEBUG_PRINT_MSG(0, "Velocity : %s", *Velocity.ToString())\
+      DEBUG_PRINT_MSG(0, "ControlRotation : %s", *ControlRotation.ToString())\
+      DEBUG_PRINT_MSG(0, "Rotation : %s", *Rotation.ToString())\
       DEBUG_PRINT_MSG(0, "Location : %s", *Location.ToString())\
       DEBUG_PRINT_MSG(0, "SpeedZ : %f", FVector(0., 0., Velocity.Z).Size())\
       DEBUG_PRINT_MSG(0, "SpeedXY : %f", FVector(Velocity.X, Velocity.Y, 0.).Size())\
@@ -78,10 +81,12 @@
       GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed Total                     : %f"), Velocity.Size())\
       GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed XY                        : %f"), FVector(Velocity.X, Velocity.Y, 0.).Size())\
       GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Speed Z                         : %f"), FVector(0.f, 0.f, Velocity.Z).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Location                        :           %15.6f, %15.6f, %15.6f"), Location.X, Location.Y, Location.Z, (Location - GetStartLocation()).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Velocity                        :           %15.6f, %15.6f, %15.6f"), Velocity.X, Velocity.Y, Velocity.Z, (Velocity - GetStartVelocity()).Size())\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Acceleration                    :           %15.6f, %15.6f, %15.6f"), GetTransientAcceleration().X, GetTransientAcceleration().Y, GetTransientAcceleration().Z)\
-      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Force                           :           %15.6f, %15.6f, %15.6f"), GetTransientForce().X, GetTransientForce().Y, GetTransientForce().Z)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Location                        :           X=%15.6f, Y=%15.6f, Z=%15.6f"), Location.X, Location.Y, Location.Z)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Rotation                        :           P=%15.6f, Y=%15.6f, R=%15.6f"), Rotation.Pitch, Rotation.Yaw, Rotation.Roll)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("ControlRotation                 :           P=%15.6f, Y=%15.6f, R=%15.6f"), ControlRotation.Pitch, ControlRotation.Yaw, ControlRotation.Roll)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Velocity                        :           X=%15.6f, Y=%15.6f, Z=%15.6f"), Velocity.X, Velocity.Y, Velocity.Z)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Acceleration                    :           X=%15.6f, Y=%15.6f, Z=%15.6f"), GetTransientAcceleration().X, GetTransientAcceleration().Y, GetTransientAcceleration().Z)\
+      GMC_LOG(LogGMCMovement, PawnOwner, Log, TEXT("Force                           :           X=%15.6f, Y=%15.6f, Z=%15.6f"), GetTransientForce().X, GetTransientForce().Y, GetTransientForce().Z)\
     }\
   }
 

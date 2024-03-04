@@ -1,10 +1,10 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCRollbackPlatform.h"
 #include "GMCMovementUtilityComponent.h"
 #include "GMCAssert.h"
 
-AGMC_RollbackPlatform::AGMC_RollbackPlatform()
+AGMC_RollbackPlatform::AGMC_RollbackPlatform(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   LinearVelocity = {200., 0., 0.};
   AngularVelocity = {0., 0., 20.};

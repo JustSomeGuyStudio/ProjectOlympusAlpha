@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 // These variables are referenced directly by some logging macros in the replication component as well so they must be preset whenever logging is enabled

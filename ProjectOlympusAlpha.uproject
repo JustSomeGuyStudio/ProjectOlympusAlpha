@@ -9,7 +9,11 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
-				"NiagaraAnimNotifies"
+				"NiagaraAnimNotifies",
+				"GASCompanion",
+				"GameplayAbilities",
+				"GameplayTasks",
+				"GameplayTags"
 			]
 		}
 	],
@@ -71,7 +75,7 @@
 		},
 		{
 			"Name": "AscentCombatFramework",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "https://www.unrealengine.com/marketplace/en-US/product/19f41df17ac5412c96ac38cbaeb43810"
 		},
 		{
@@ -83,6 +87,19 @@
 			"Name": "AnimationMatchingSuite",
 			"Enabled": true,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/e820977cf76443e4a298912e3d80ca19"
+		},
+		{
+			"Name": "GASCompanion",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/d83c6f34c3fb4b7092dde195c37c7413"
+		},
+		{
+			"Name": "AnimationWarping",
+			"Enabled": true
+		},
+		{
+			"Name": "AnimationLocomotionLibrary",
+			"Enabled": true
 		}
 	]
 }

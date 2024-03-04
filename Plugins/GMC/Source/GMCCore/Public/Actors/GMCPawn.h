@@ -1,20 +1,22 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GMCReplicationComponent.h"
 #include "GameFramework/Pawn.h"
+#include "ModularGameplayActors/GSCModularPawn.h"
 #include "GMCPawn.generated.h"
 
 /// Pawn class intended to be used with UGMC_ReplicationCmp.
 UCLASS(BlueprintType, Blueprintable)
-class GMCCORE_API AGMC_Pawn : public APawn
+class GMCCORE_API AGMC_Pawn : public AGSCModularPawn
 {
   GENERATED_BODY()
 
 public:
 
   AGMC_Pawn(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
   void PostInitializeComponents() override;
   void BeginPlay() override;
   bool IsNetRelevantFor(const AActor* RealViewer, const AActor* ViewTarget, const FVector& SrcLocation) const override;

@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -1195,7 +1195,6 @@ public:
     ::UGMC_ReplicationCmp* const Component
   )
   {
-    gmc_ck(this->GetSimulationType() == ESimType::SPMove)
     gmc_ck(this->GetSimulationState() != ESimState::None)
 
     auto& Data = this->GetData(this->IndexSingle);

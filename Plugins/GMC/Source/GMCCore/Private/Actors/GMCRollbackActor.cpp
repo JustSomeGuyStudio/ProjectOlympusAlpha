@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCRollbackActor.h"
 #include "GMCPlayerController.h"
@@ -6,7 +6,7 @@
 #include "GMCAggregator.h"
 #include "GMCLog.h"
 
-AGMC_RollbackActor::AGMC_RollbackActor()
+AGMC_RollbackActor::AGMC_RollbackActor(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   PrimaryActorTick.bCanEverTick = true;
   bAllowTickBeforeBeginPlay = false;

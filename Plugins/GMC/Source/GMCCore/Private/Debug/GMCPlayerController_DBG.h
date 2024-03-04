@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #if ALLOW_CONSOLE && !NO_LOGGING
@@ -10,7 +10,7 @@
     {\
       const UNetConnection* Connection = GetNetConnection();\
       float Ping = 0.f;\
-      if (USE_PLAYER_STATE_PING)\
+      if (CL_WorldTimeAux.USE_PLAYER_STATE_PING)\
       {\
         Ping = GetPingInMilliseconds();\
       }\
@@ -50,7 +50,7 @@
           Log,\
           TEXT("UtcNow: %s | ClientWorldTime = %12.6f s"),\
           *FDateTime::UtcNow().GetTimeOfDay().ToString(),\
-          CL_SyncedWorldTime\
+          CL_WorldTimeAux.SyncedWorldTime\
         )\
       }\
     }\

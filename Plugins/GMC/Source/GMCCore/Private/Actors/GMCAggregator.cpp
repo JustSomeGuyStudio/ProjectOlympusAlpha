@@ -1,7 +1,8 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCAggregator.h"
 #include "GMCPlayerController.h"
+#include "GMCAIController.h"
 #include "GMCReplicationComponent.h"
 #include "GMCMovementUtilityComponent.h"
 #include "GMCOrganicMovementComponent.h"
@@ -17,7 +18,7 @@ DECLARE_CYCLE_STAT(TEXT("MovementComponentTicks"), STAT_MovementComponentTicks, 
 DECLARE_CYCLE_STAT(TEXT("RollbackActorTicks"), STAT_RollbackActorTicks, STATGROUP_AGMC_Aggregator)
 DECLARE_CYCLE_STAT(TEXT("MeshComponentTicks"), STAT_MeshComponentTicks, STATGROUP_AGMC_Aggregator)
 
-AGMC_Aggregator::AGMC_Aggregator()
+AGMC_Aggregator::AGMC_Aggregator(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   PrimaryActorTick.bCanEverTick = true;
   bAllowTickBeforeBeginPlay = false;
@@ -469,8 +470,9 @@ int32 AGMC_Aggregator::GetControllerOrderNumber(const AController* Controller)
   int32 LocalGMCPlayerController = 0;
   int32 GMCPlayerController = 1;
   int32 PlayerController = 2;
-  int32 AIController = 3;
-  int32 OtherController = 4;
+  int32 GMCAIController = 3;
+  int32 AIController = 4;
+  int32 OtherController = 5;
 
   if (Cast<AGMC_PlayerController>(Controller) && Controller->IsLocalPlayerController())
   {
@@ -485,6 +487,11 @@ int32 AGMC_Aggregator::GetControllerOrderNumber(const AController* Controller)
   if (Cast<APlayerController>(Controller))
   {
     return PlayerController;
+  }
+
+  if (Cast<AGMC_AIController>(Controller))
+  {
+    return GMCAIController;
   }
 
   if (Cast<AAIController>(Controller))

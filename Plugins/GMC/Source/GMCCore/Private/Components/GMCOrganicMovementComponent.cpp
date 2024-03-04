@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCOrganicMovementComponent.h"
 #include "GMCPawn.h"
@@ -100,7 +100,7 @@ namespace GMCCVars
 #endif
 }
 
-UGMC_OrganicMovementCmp::UGMC_OrganicMovementCmp()
+UGMC_OrganicMovementCmp::UGMC_OrganicMovementCmp(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   ReplicationSettings.DefaultPredictionSettings.AngularVelocity = EGMC_PredictionMode::None;
   ReplicationSettings.DefaultSimulationSettings.AngularVelocity = EGMC_SimulationMode::None;
@@ -112,6 +112,8 @@ UGMC_OrganicMovementCmp::UGMC_OrganicMovementCmp()
   AvoidanceGroup.bGroup0 = true;
   GroupsToAvoid.Packed = 0xFFFF'FFFF;
   GroupsToIgnore.Packed = 0;
+
+  bUseAccelerationForPaths = true;
 
   GetNavAgentPropertiesRef().bCanCrouch = false;
   GetNavAgentPropertiesRef().bCanJump = false;
@@ -233,7 +235,7 @@ void UGMC_OrganicMovementCmp::WorldTickStart_Implementation(float DeltaTime)
 
   if (DebugShouldVisualizeBaseEqualization() && RelBasedMovementAux.bDidEqualizeBase)
   {
-    RelBasedMovementAux.EqualizeBase(false, true/*moves all pawns*/, this);
+    RelBasedMovementAux.EqualizeBase(false, true, this);
   }
 }
 
@@ -244,7 +246,7 @@ void UGMC_OrganicMovementCmp::WorldTickEnd_Implementation(float DeltaTime)
   gmc_ck(BasedMovement.IsRelative() ? !RelBasedMovementAux.bDidEqualizeBase : true)
   if (DebugShouldVisualizeBaseEqualization() && !RelBasedMovementAux.bDidEqualizeBase)
   {
-    RelBasedMovementAux.EqualizeBase(true, true/*moves all pawns*/, this);
+    RelBasedMovementAux.EqualizeBase(true, true, this);
   }
 }
 
@@ -252,11 +254,6 @@ bool UGMC_OrganicMovementCmp::CL_ShouldUseSmoothCorrections() const
 {
   // Smooth corrections must be disabled when using the debug visualization.
   return !DebugShouldVisualizeBaseEqualization() && Super::CL_ShouldUseSmoothCorrections();
-}
-
-bool UGMC_OrganicMovementCmp::ShouldDeferAutonomousProxyCameraManagerUpdate() const
-{
-  return (DebugShouldVisualizeBaseEqualization() && GetActorBase()) || Super::ShouldDeferAutonomousProxyCameraManagerUpdate();
 }
 
 bool UGMC_OrganicMovementCmp::DebugShouldVisualizeBaseEqualization() const
@@ -359,7 +356,11 @@ bool UGMC_OrganicMovementCmp::OnCumulativeMoveInitialized_Implementation(
   const FVector LastRawInputVector = GetBoundCompressedVector(BI_RawInputVector, SourceState);
   SetBoundCompressedVector(LastRawInputVector, BI_RawInputVector, InputState);
 
-  const auto& SourceControlRotation = SourceState.ControlRotation.Read();
+  const bool bUseRelative = BasedMovement.IsRelative() || BasedMovement.IsForcedRelativeSimulation();
+  const auto& Base = GetActorBase();
+
+  const auto& SourceControlRotation = bUseRelative && Base ?
+    GetWorldControlRotationFor(SourceState.ControlRotation.Read(), Base->GetComponentTransform()) : SourceState.ControlRotation.Read();
   FRotator SmoothControlRotation = SourceControlRotation;
   SmoothControlRotation.Roll = 0.;
 
@@ -388,7 +389,9 @@ bool UGMC_OrganicMovementCmp::OnCumulativeMoveInitialized_Implementation(
     }
   }
 
-  InputState.ControlRotation.Write(SmoothControlRotation);
+  InputState.ControlRotation.Write(
+    bUseRelative && Base ? GetBasedControlRotationFor(SmoothControlRotation, Base->GetComponentTransform()) : SmoothControlRotation
+  );
 
   if (HasReachedMaxExtrapolationDistance())
   {
@@ -397,7 +400,7 @@ bool UGMC_OrganicMovementCmp::OnCumulativeMoveInitialized_Implementation(
     InputState.AngularVelocity.Write(FVector::ZeroVector);
   }
 
-  if (BasedMovement.IsRelative() || BasedMovement.IsForcedRelativeSimulation())
+  if (bUseRelative)
   {
     RelBasedMovementAux.OnCumulativeMoveInitialized(InputState, this);
   }
@@ -564,6 +567,14 @@ void UGMC_OrganicMovementCmp::OnClientPredictionDisabled_Implementation()
   HaltMovement();
 }
 
+void UGMC_OrganicMovementCmp::OnGMCEnabled_Implementation()
+{
+  Super::OnGMCEnabled_Implementation();
+
+  // Clears any pending input vector that was accumulated while the GMC was disabled.
+  ConsumeInputVector();
+}
+
 void UGMC_OrganicMovementCmp::OnGMCDisabled_Implementation()
 {
   Super::OnGMCDisabled_Implementation();
@@ -621,17 +632,11 @@ void UGMC_OrganicMovementCmp::PreLocalMoveExecution_Implementation(const FGMC_Mo
 
   RawInputVector = ConsumeInputVector();
 
-  if (IsNonPredictedAutonomousProxy())
-  {
-    return;
-  }
-
-  if (!IsValid(UpdatedComponent) || UpdatedComponent->IsSimulatingPhysics())
-  {
-    return;
-  }
-
-  if (BasedMovement.IsRelative())
+  if (
+    (BasedMovement.IsRelative() || (IsSimulating() && BasedMovement.IsForcedRelativeSimulation())) &&
+    IsValid(UpdatedComponent) && 
+    !UpdatedComponent->IsSimulatingPhysics()
+  )
   {
     RelBasedMovementAux.PreMoveExecution(true, this, LocalMove.MetaData.DeltaTime);
   }
@@ -643,12 +648,11 @@ void UGMC_OrganicMovementCmp::SV_PreRemoteMoveExecution_Implementation(const FGM
 
   Super::SV_PreRemoteMoveExecution_Implementation(RemoteMove);
 
-  if (!IsValid(UpdatedComponent) || UpdatedComponent->IsSimulatingPhysics())
-  {
-    return;
-  }
-
-  if (BasedMovement.IsRelative())
+  if (
+    (BasedMovement.IsRelative() || (IsSimulating() && BasedMovement.IsForcedRelativeSimulation())) &&
+    IsValid(UpdatedComponent) && 
+    !UpdatedComponent->IsSimulatingPhysics()
+  )
   {
     RelBasedMovementAux.PreMoveExecution(false, this, RemoteMove.MetaData.DeltaTime);
   }
@@ -658,22 +662,17 @@ void UGMC_OrganicMovementCmp::PostLocalMoveExecution_Implementation(const FGMC_M
 {
   SCOPE_CYCLE_COUNTER(STAT_PostLocalMoveExecution)
 
-  Super::PostLocalMoveExecution_Implementation(ExecutedMove);
-
-  if (IsNonPredictedAutonomousProxy())
-  {
-    return;
-  }
-
-  if (!IsValid(UpdatedComponent) || UpdatedComponent->IsSimulatingPhysics())
-  {
-    return;
-  }
-
-  if (BasedMovement.IsRelative())
+  if (
+    (BasedMovement.IsRelative() || (IsSimulating() && BasedMovement.IsForcedRelativeSimulation())) &&
+    IsValid(UpdatedComponent) && 
+    !UpdatedComponent->IsSimulatingPhysics()
+  )
   {
     RelBasedMovementAux.PostMoveExecution(true, this);
   }
+
+  // Swapping of the no-prediction buffer must only happen after the relative based movement logic has finished.
+  Super::PostLocalMoveExecution_Implementation(ExecutedMove);
 }
 
 void UGMC_OrganicMovementCmp::SV_PostRemoteMoveExecution_Implementation(const FGMC_Move& RemoteMove)
@@ -682,12 +681,11 @@ void UGMC_OrganicMovementCmp::SV_PostRemoteMoveExecution_Implementation(const FG
 
   Super::SV_PostRemoteMoveExecution_Implementation(RemoteMove);
 
-  if (!IsValid(UpdatedComponent) || UpdatedComponent->IsSimulatingPhysics())
-  {
-    return;
-  }
-
-  if (BasedMovement.IsRelative())
+  if (
+    (BasedMovement.IsRelative() || (IsSimulating() && BasedMovement.IsForcedRelativeSimulation())) &&
+    IsValid(UpdatedComponent) && 
+    !UpdatedComponent->IsSimulatingPhysics()
+  )
   {
     RelBasedMovementAux.PostMoveExecution(false, this);
   }
@@ -701,21 +699,6 @@ void UGMC_OrganicMovementCmp::CL_PreReplayMoveExecution_Implementation(const FGM
   {
     RelBasedMovementAux.CL_PreReplayMoveExecution(ReplayMove, this);
   }
-}
-
-bool UGMC_OrganicMovementCmp::CL_IsAllowedToReplay_Implementation(
-  EGMC_SyncType DeviatingSyncType,
-  int32 DeviatingSyncTypeIndex,
-  const FGMC_PawnState& DeviatingState,
-  const FGMC_PawnState& ServerState
-)
-{
-  if (!Super::CL_IsAllowedToReplay_Implementation(DeviatingSyncType, DeviatingSyncTypeIndex, DeviatingState, ServerState))
-  {
-    return false;
-  }
-
-  return CL_AllowReplayBasedOnMontageValues(DeviatingSyncType, DeviatingSyncTypeIndex, DeviatingState, ServerState);
 }
 
 void UGMC_OrganicMovementCmp::CL_PreAdoptStateForReplay(const FGMC_Move& APMove, const FGMC_Move& SourceMove)
@@ -899,6 +882,7 @@ void UGMC_OrganicMovementCmp::OnSyncDataApplied_Implementation(const FGMC_PawnSt
   if (BasedMovement.IsRelative())
   {
     if (
+      bUseClientPrediction &&
       SV_IsExecutingRemoteMoves() && (
         Context == EGMC_NetContext::RemoteServerPawn_PreMoveExecution ||
         Context == EGMC_NetContext::RemoteServerPawn_PostMoveExecution
@@ -914,6 +898,7 @@ void UGMC_OrganicMovementCmp::OnSyncDataApplied_Implementation(const FGMC_PawnSt
       )
     )
     {
+      gmc_ck(bUseClientPrediction)
       RelBasedMovementAux.CL_ReconcileClientAuthValues(Context == EGMC_NetContext::LocalClientPawn_PreReplayMoveExecution, this);
     }
   }
@@ -1000,7 +985,7 @@ USceneComponent* UGMC_OrganicMovementCmp::SetRootCollisionShape(
 
   CurrentRootCollisionShape = static_cast<uint8>(NewCollisionShape);
   CurrentRootCollisionExtent = ValidExtent;
-  gmc_ck(CurrentRootCollisionExtent == Super::GetRootCollisionExtent(false))
+  gmc_ck(CurrentRootCollisionExtent.Equals(Super::GetRootCollisionExtent(false), 0.01))
 
   return NewRootComponent;
 }
@@ -1239,9 +1224,9 @@ void UGMC_OrganicMovementCmp::PhysicsSimulationUpdate_Implementation(float Delta
 
 FVector UGMC_OrganicMovementCmp::PreProcessInputVector_Implementation(FVector InRawInputVector)
 {
-  if (IsServerBot())
+  if (!IsPlayerControlledPawn())
   {
-    // Bots using acceleration already receive the move input in their controller's local space.
+    // Bots using acceleration already receive the move input in the direction of the target.
     return InRawInputVector;
   }
 
@@ -1405,7 +1390,7 @@ void UGMC_OrganicMovementCmp::SmoothActorBaseChangeSimulated(int32 TargetIndex, 
 
     if (WorldLocationDifference >= SMOOTH_SIMULATED_BASE_CHANGE_MIN_LOC_DIFF)
     {
-      TriggerExtrapolationRecovery();
+      TriggerExtrapolationRecovery(true);
     }
   }
 }
@@ -1468,32 +1453,31 @@ void UGMC_OrganicMovementCmp::PostPhysicsUpdate_Implementation(float DeltaSecond
   SetPhysDeltaTime(DeltaSeconds, false);
 }
 
-void UGMC_OrganicMovementCmp::MoveWithBaseRelative_Implementation()
+void UGMC_OrganicMovementCmp::MoveWithBaseRelative_Implementation(bool bSimulated)
 {
   SCOPE_CYCLE_COUNTER(STAT_MoveWithBaseRelative)
 
-  gmc_ck(BasedMovement.IsRelative())
+  gmc_ck(BasedMovement.IsRelative() || BasedMovement.IsForcedRelativeSimulation())
   gmc_ck(!CL_IsReplaying())
-  gmc_ck(!IsSimulating())
 
   const auto& CurrentBase = GetActorBase();
 
-  const auto& SavedBase = RelBasedMovementAux.SavedTransforms.GetSavedBase(false);
+  const auto& SavedBase = RelBasedMovementAux.SavedTransforms.GetSavedBase(bSimulated);
 
   if (!CurrentBase || !SavedBase || CurrentBase != SavedBase)
   {
     return;
   }
 
-  const FVector SavedRelativeLinearVelocity = RelBasedMovementAux.SavedTransforms.GetSavedRelativeLinearVelocity(false);
-  const FVector SavedRelativePawnLocation = RelBasedMovementAux.SavedTransforms.GetSavedRelativeActorLocation(false);
-  const FRotator SavedRelativePawnRotation = RelBasedMovementAux.SavedTransforms.GetSavedRelativeActorRotation(false);
-  const FRotator SavedRelativeControlRotation = RelBasedMovementAux.SavedTransforms.GetSavedRelativeControlRotation(false);
+  const FVector SavedRelativeLinearVelocity = RelBasedMovementAux.SavedTransforms.GetSavedRelativeLinearVelocity(bSimulated);
+  const FVector SavedRelativePawnLocation = RelBasedMovementAux.SavedTransforms.GetSavedRelativeActorLocation(bSimulated);
+  const FRotator SavedRelativePawnRotation = RelBasedMovementAux.SavedTransforms.GetSavedRelativeActorRotation(bSimulated);
+  const FRotator SavedRelativeControlRotation = RelBasedMovementAux.SavedTransforms.GetSavedRelativeControlRotation(bSimulated);
 
-  const FVector SavedWorldLinearVelocity = RelBasedMovementAux.SavedTransforms.GetSavedWorldLinearVelocity(false);
-  const FVector SavedWorldPawnLocation = RelBasedMovementAux.SavedTransforms.GetSavedWorldActorLocation(false);
-  const FRotator SavedWorldPawnRotation = RelBasedMovementAux.SavedTransforms.GetSavedWorldActorRotation(false);
-  const FRotator SavedWorldControlRotation = RelBasedMovementAux.SavedTransforms.GetSavedWorldControlRotation(false);
+  const FVector SavedWorldLinearVelocity = RelBasedMovementAux.SavedTransforms.GetSavedWorldLinearVelocity(bSimulated);
+  const FVector SavedWorldPawnLocation = RelBasedMovementAux.SavedTransforms.GetSavedWorldActorLocation(bSimulated);
+  const FRotator SavedWorldPawnRotation = RelBasedMovementAux.SavedTransforms.GetSavedWorldActorRotation(bSimulated);
+  const FRotator SavedWorldControlRotation = RelBasedMovementAux.SavedTransforms.GetSavedWorldControlRotation(bSimulated);
 
   const FVector NewWorldLinearVelocity = GetLinearVelocity_GMC();
   const FVector NewWorldPawnLocation = GetActorLocation_GMC();
@@ -1596,7 +1580,7 @@ bool UGMC_OrganicMovementCmp::ShouldMoveGMCPawnForBaseEqualization_Implementatio
 
 void UGMC_OrganicMovementCmp::UnEqualizeBase()
 {
-  if (IsNetMode(NM_Standalone) || IsSimulating() || !BasedMovement.IsRelative() || !BasedMovement.GetEqualizeBaseActor())
+  if (IsNetMode(NM_Standalone))
   {
     return;
   }
@@ -1614,12 +1598,12 @@ void UGMC_OrganicMovementCmp::UnEqualizeBase()
     return;
   }
 
-  RelBasedMovementAux.EqualizeBase(false, true/*moves all pawns*/, this);
+  RelBasedMovementAux.EqualizeBase(false, true, this);
 }
 
 void UGMC_OrganicMovementCmp::ReEqualizeBase()
 {
-  if (IsNetMode(NM_Standalone) || IsSimulating() || !BasedMovement.IsRelative() || !BasedMovement.GetEqualizeBaseActor())
+  if (IsNetMode(NM_Standalone))
   {
     return;
   }
@@ -1630,7 +1614,7 @@ void UGMC_OrganicMovementCmp::ReEqualizeBase()
     return;
   }
 
-  RelBasedMovementAux.EqualizeBase(true, true/*moves all pawns*/, this);
+  RelBasedMovementAux.EqualizeBase(true, true, this);
 }
 
 bool UGMC_OrganicMovementCmp::UpdateMovementModeDynamic_Implementation(FGMC_FloorParams& Floor, float DeltaSeconds)
@@ -3118,6 +3102,7 @@ bool UGMC_OrganicMovementCmp::StepUp(const FVector& LocationDelta, const FHitRes
         VeryVerbose,
         "Aborting step-up, \"%s\" (%f) would have been exceeded by actual step-up height (%f).",
         TO_STR(MaxStepUpHeight),
+        MaxStepUpHeight,
         DeltaZ
       )
       ScopedMovement.RevertMove();
@@ -4628,7 +4613,7 @@ bool UGMC_OrganicMovementCmp::ShouldApplyPhysicsInteraction(UPrimitiveComponent*
     return false;
   }
 
-  if (BasedMovement.GetNoPhysicsInteractionWithBase())
+  if (!BasedMovement.IsNone() && BasedMovement.GetNoPhysicsInteractionWithBase())
   {
     // Do not apply any physics interaction if the component is or is attached to our current movement base.
 
@@ -5098,46 +5083,6 @@ void UGMC_OrganicMovementCmp::CallMontageEvents(
     InOutMontageTracker.ClearActiveMontage();
     CL_DoNotCombineNextMove();
   }
-}
-
-bool UGMC_OrganicMovementCmp::CL_AllowReplayBasedOnMontageValues(
-  EGMC_SyncType DeviatingSyncType,
-  int32 DeviatingSyncTypeIndex,
-  const FGMC_PawnState& DeviatingState,
-  const FGMC_PawnState& ServerState
-) const
-{
-  if (MontageReplication.MontagePrediction.bCorrectNonRootMotionMontages)
-  {
-    return true;
-  }
-
-  if (
-    (DeviatingSyncType == EGMC_SyncType::AnimMontageReference && DeviatingSyncTypeIndex == BI_MontageTracker_Montage) ||
-    (DeviatingSyncType == EGMC_SyncType::SinglePrecisionFloat && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePosition) ||
-    (DeviatingSyncType == EGMC_SyncType::CompressedSinglePrecisionFloat && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePlayRate) ||
-    (DeviatingSyncType == EGMC_SyncType::Bool && DeviatingSyncTypeIndex == BI_MontageTracker_MontagePaused)
-  )
-  {
-    const auto& ServerMontage = ServerState.AnimMontageReference.Read(BI_MontageTracker_Montage);
-    const bool bServerMontageHasRootMotion = IsValid(ServerMontage) && ServerMontage->HasRootMotion();
-    if (bServerMontageHasRootMotion)
-    {
-      return true;
-    }
-
-    const auto& DeviatingMontage = DeviatingState.AnimMontageReference.Read(BI_MontageTracker_Montage);
-    const bool bDeviatingMontageHasRootMotion = IsValid(DeviatingMontage) && DeviatingMontage->HasRootMotion();
-    if (bDeviatingMontageHasRootMotion)
-    {
-      return true;
-    }
-
-    // There's no root motion involved with the deviating montage, don't replay because it doesn't affect movement.
-    return false;
-  }
-
-  return true;
 }
 
 void UGMC_OrganicMovementCmp::CL_CheckMontageStatusAfterReplay(const FGMC_MontageTracker& PreReplayMontageTracker)
@@ -6027,12 +5972,11 @@ void FGMC_RelBasedMovementAux::PreMoveExecution(bool bLocalMove, UGMC_OrganicMov
   gmc_ck(Outer->BasedMovement.IsRelative())
   gmc_ck(!Outer->IsSimulating())
   gmc_ck(!Outer->CL_IsReplaying())
-  gmc_ck(!Outer->IsNonPredictedAutonomousProxy())
   gmc_ck(Outer->UpdatedComponent)
   gmc_ck(!Outer->UpdatedComponent->IsSimulatingPhysics())
 
   // Resolve the delta first since the base may have moved inside the pawn.
-  CALL_NATIVE_EVENT_CONDITIONAL(Outer->bNoBlueprintEvents, Outer, MoveWithBaseRelative);
+  CALL_NATIVE_EVENT_CONDITIONAL(Outer->bNoBlueprintEvents, Outer, MoveWithBaseRelative, false);
 
   GMC_CLOG(
     Outer->IsNetMode(NM_Client) && !IsServerAuth(Outer->ReplicationSettings.DefaultPredictionSettings.ActorBase),
@@ -6073,7 +6017,6 @@ void FGMC_RelBasedMovementAux::PostMoveExecution(bool bLocalMove, UGMC_OrganicMo
 {
   gmc_ck(Outer->BasedMovement.IsRelative())
   gmc_ck(!Outer->IsSimulating())
-  gmc_ck(!Outer->IsNonPredictedAutonomousProxy())
   gmc_ck(SavedTransforms.GetSavedBase(false) == Outer->GetActorBase())
   gmc_ck(Outer->UpdatedComponent)
   gmc_ck(!Outer->UpdatedComponent->IsSimulatingPhysics())
@@ -6244,20 +6187,26 @@ void FGMC_RelBasedMovementAux::SV_HandleBaseTransition(UGMC_OrganicMovementCmp* 
   }
 }
 
-void FGMC_RelBasedMovementAux::EqualizeBase(bool bEqualize, bool bLocalMove, UGMC_OrganicMovementCmp* const Outer)
+void FGMC_RelBasedMovementAux::EqualizeBase(bool bEqualize, bool bMoveAllPawns, UGMC_OrganicMovementCmp* const Outer)
 {
-  gmc_ck(Outer->BasedMovement.IsRelative())
-  gmc_ck(Outer->BasedMovement.GetEqualizeBaseActor())
-  gmc_ck(!Outer->IsSimulating())
-
   if (Outer->IsNetMode(NM_Standalone))
   {
     return;
   }
 
-  if (!Outer->IsAutonomousProxy() && !Outer->IsRemotelyControlledServerPawn())
+  // Still allow resetting of an already equalized base (normally not supposed to happen).
+  if (bEqualize || !bDidEqualizeBase)
   {
-    return;
+    if (!Outer->BasedMovement.IsRelative() || !Outer->BasedMovement.GetEqualizeBaseActor() || Outer->IsSimulating())
+    {
+      gmc_ckne()
+      return;
+    }
+
+    if (!Outer->IsAutonomousProxy() && !Outer->IsRemotelyControlledServerPawn())
+    {
+      return;
+    }
   }
 
   const auto& Base = Outer->GetActorBase();
@@ -6323,7 +6272,7 @@ void FGMC_RelBasedMovementAux::EqualizeBase(bool bEqualize, bool bLocalMove, UGM
   // The first entry always refers to the pawn that is currently performing the movement.
   TArray<PawnData> SavedPawnData{PawnData{Outer}};
 
-  const bool bMoveOtherPawns = bLocalMove && (bEqualize || bDidEqualizeBase);
+  const bool bMoveOtherPawns = bMoveAllPawns && (bEqualize || bDidEqualizeBase);
 
   if (bMoveOtherPawns)
   {
@@ -6516,6 +6465,7 @@ void FGMC_RelBasedMovementAux::HandleMoveIgnoreActors(bool bSimulated, UGMC_Orga
 void FGMC_RelBasedMovementAux::SV_ReconcileClientAuthValues(bool bPreMoveExecution, UGMC_OrganicMovementCmp* const Outer)
 {
   gmc_ck(Outer->IsRemotelyControlledServerPawn())
+  gmc_ck(Outer->bUseClientPrediction)
   gmc_ck(Outer->SV_IsExecutingRemoteMoves())
   gmc_ck(Outer->BasedMovement.IsRelative())
 
@@ -6670,6 +6620,7 @@ void FGMC_RelBasedMovementAux::CL_PreReplayMoveExecution(const FGMC_Move& Replay
 void FGMC_RelBasedMovementAux::CL_ReconcileClientAuthValues(bool bPreMoveExecution, UGMC_OrganicMovementCmp* const Outer)
 {
   gmc_ck(Outer->IsPredictedAutonomousProxy())
+  gmc_ck(Outer->bUseClientPrediction)
   gmc_ck(Outer->CL_IsReplaying())
   gmc_ck(Outer->BasedMovement.IsRelative())
 

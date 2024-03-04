@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 #pragma once
 
 #include "CoreMinimal.h"
@@ -13,7 +13,8 @@ class GMCCORE_API AGMC_RollbackPlatform : public AGMC_RollbackActor
 
 public:
 
-  AGMC_RollbackPlatform();
+  AGMC_RollbackPlatform(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
+
   void UpdateState_Implementation(double Time, float DeltaTime, const struct FGMC_Move& Move, EGMC_NetContext Context) override;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", meta = (ClampMin = "0", UIMin = "0.1"))

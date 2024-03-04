@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCGoldSrcMovementComponent.h"
 #include "Compression.h"
@@ -29,7 +29,7 @@ namespace GMCCVars
 #endif
 }
 
-UGMC_GoldSrcMovementCmp::UGMC_GoldSrcMovementCmp()
+UGMC_GoldSrcMovementCmp::UGMC_GoldSrcMovementCmp(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
   // Set the actor rotation directly from the view direction.
   bOrientToInputDirection = false;
@@ -694,8 +694,8 @@ FVector UGMC_GoldSrcMovementCmp::PreProcessInputVector_Implementation(FVector In
   FVector TransformedInputVector = InRawInputVector;
   const bool bInWater = IsSwimming();
 
-  // Bots using acceleration already receive the move input in their controller's local space.
-  if (!IsServerBot())
+  // Bots using acceleration already receive the move input in the direction of the target.
+  if (IsPlayerControlledPawn())
   {
     if (bInWater && bUseAltSwimControls)
     {

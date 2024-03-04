@@ -1,4 +1,4 @@
-// Copyright 2022-2023 Dominik Lips. All Rights Reserved.
+// Copyright 2022-2024 Dominik Lips. All Rights Reserved.
 
 #include "GMCK2Node_PlayMontage.h"
 #include "GMCPlayMontageCallbackProxy.h"
