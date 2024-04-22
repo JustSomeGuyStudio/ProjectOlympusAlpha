@@ -29,8 +29,7 @@ public class GMCCore : ModuleRules
       "UMG",
       "EnhancedInput",
       "GameplayTags",
-      "StructUtils",
-      "GMCAbilitySystemTypesInclude"
+      "StructUtils"
     });
 
     // Public include directories.

@@ -20,7 +20,7 @@ public:
   void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Client Time Sync", meta = (ClampMin = "0", UIMin = "0.02", UIMax = "0.2"))
-  /// The interval in seconds at which the server world time should be replicated to the client.
+  /// The interval in seconds at which the server world time should be replicated to the client. If changed at runtime, the update timer must be reset.
   float WorldTimeUpdateInterval{0.1f};
 
   /// Returns the value of the last replicated world time value received from the server.
@@ -28,6 +28,26 @@ public:
   /// @returns      double    The replicated server world time in seconds (not dilated or paused).
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   double GetRealWorldTimeSecondsReplicated() const;
+
+  /// Starts the timer for periodically updating the world time on the server.
+  ///
+  /// @param        UpdateInterval    The interval at which the timer should run.
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "General Movement Component")
+  void SV_StartUpdateTimer(float UpdateInterval);
+
+  /// Clears the timer for periodically updating the world time on the server.
+  ///
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "General Movement Component")
+  void SV_StopUpdateTimer();
+
+  /// Restarts the timer for periodically updating the world time on the server.
+  ///
+  /// @param        UpdateInterval    The interval at which the timer should run.
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "General Movement Component")
+  void SV_ResetUpdateTimer(float UpdateInterval);
 
 protected:
 

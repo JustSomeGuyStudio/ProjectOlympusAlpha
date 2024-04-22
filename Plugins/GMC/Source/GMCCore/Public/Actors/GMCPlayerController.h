@@ -46,9 +46,16 @@ public:
   /// Returns the synchronised server world time for a client. Considers network delay meaning the returned value will be nearly the same as the world time on
   /// the server at any given moment.
   ///
-  /// @returns      float    The current synchronised server world time.
+  /// @returns      double    The current synchronised server world time.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   double CL_GetSyncedWorldTimeSeconds() const;
+
+  /// Returns the average time discrepancy of the client that was calculated during the last time sync. If the value is greater/smaller than 0 the client is
+  /// estimated to be behind/ahead.
+  ///
+  /// @returns      double    The current estimated time discrepancy of the client.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  double CL_GetAverageTimeDiscrepancy() const;
 
   /// The camera manager update is usually deferred to ensure the correct camera view for the player in all situations.
   ///
@@ -190,6 +197,9 @@ private:
     // received in which case AGMC_WorldTimeRep::CL_OnRepRealWorldTimeSecondsReplicated is called. OnRep functions are processed before actors are ticked, and
     // the received server world time is already the updated time for this frame.
     bool bDoNotUpdateWorldTime{false};
+
+    // The average time discrepancy of the client calculated during the last time sync. If greater/smaller than 0 the client is estimated to be behind/ahead.
+    float AvgSignedTimeDiscrepancy{0.};
 
     // Saves past discrepancies of the client time from the server time to generate an average deviation.
     TGMC_CircularNumericBuffer<double, TIME_DISCREPANCY_BUFFER_SIZE> TimeDiscrepancyBuffer{};

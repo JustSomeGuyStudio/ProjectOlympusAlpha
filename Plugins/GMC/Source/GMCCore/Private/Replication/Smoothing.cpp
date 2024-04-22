@@ -14,6 +14,7 @@ void FGMC_MatchLatestTransientParams::Log(const UGMC_ReplicationCmp* Outer, cons
     TEXT("%s")
     TEXT("MaxDeltaTime = %f  ")
     TEXT("MinDeltaTime = %f  ")
+    TEXT("DeltaTimeDilation = %f  ")
     TEXT("TeleportThreshold = %f  ")
     TEXT("InterpStates = %s  ")
     TEXT("TargetStateTimestamp = %f  ")
@@ -27,6 +28,7 @@ void FGMC_MatchLatestTransientParams::Log(const UGMC_ReplicationCmp* Outer, cons
     *PrefixStr,
     MaxDeltaTime,
     MinDeltaTime,
+    DeltaTimeDilation,
     TeleportThreshold,
     InterpStates == EGMC_InterpolationStates::Input ? TEXT("Input") : TEXT("Output"),
     TargetStateTimestamp,

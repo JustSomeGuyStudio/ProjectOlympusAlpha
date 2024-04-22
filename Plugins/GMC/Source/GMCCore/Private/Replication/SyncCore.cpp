@@ -378,7 +378,7 @@ void TSyncType<FActorLocation>::ApplyValue(const UType& Value, bool bUseRelative
     return;
   }
 
-  Component->SetActorLocation_GMC(Value);
+  Component->SetActorLocation_GMC(Value, true);
 }
 
 TSyncType<FActorLocation>::UType TSyncType<FActorLocation>::ToRelative(const UType& Value, const USceneComponent* const TargetBase, ::UGMC_ReplicationCmp* const Component) const
@@ -507,7 +507,7 @@ void TSyncType<FActorRotation>::ApplyValue(const UType& Value, bool bUseRelative
     return;
   }
 
-  Component->SetActorRotation_GMC(Value);
+  Component->SetActorRotation_GMC(Value, true);
 }
 
 TSyncType<FActorRotation>::UType TSyncType<FActorRotation>::ToRelative(const UType& Value, const USceneComponent* const TargetBase, ::UGMC_ReplicationCmp* const Component) const
@@ -2319,6 +2319,89 @@ FString TSyncType<FGameplayTagContainer>::GetLogValue(const UType& Value, ::UGMC
 EGMC_SyncType TSyncType<FGameplayTagContainer>::GetTypeEnum(::UGMC_ReplicationCmp* const Component) const
 {
   return EGMC_SyncType::GameplayTagContainer;
+}
+
+void TSyncType<FInstancedStruct>::InitDefault(UType& Value, ::UGMC_ReplicationCmp* const Component)
+{
+  gmc_ck(!Value.GetScriptStruct())
+  gmc_ck(!Value.GetMemory())
+}
+
+void TSyncType<FInstancedStruct>::Quantize(UType& Value, ::UGMC_ReplicationCmp* const Component) const
+{}
+
+bool TSyncType<FInstancedStruct>::ShouldCombine(const UType& Value, const UType& PreviousValue, ::UGMC_ReplicationCmp* const Component) const
+{
+  return IsEqual(Value, PreviousValue, Component);
+}
+
+void TSyncType<FInstancedStruct>::Combine(UType& Value, const UType& ValueToCombine, ::UGMC_ReplicationCmp* const Component)
+{}
+
+bool TSyncType<FInstancedStruct>::IsEqual(const UType& Value, const UType& OtherValue, ::UGMC_ReplicationCmp* const Component) const
+{
+  return Value == OtherValue;
+}
+
+bool TSyncType<FInstancedStruct>::IsValid(const UType& Value, const UType& OtherValue, ::UGMC_ReplicationCmp* const Component) const
+{
+  return IsEqual(Value, OtherValue, Component);
+}
+
+TSyncType<FInstancedStruct>::UType TSyncType<FInstancedStruct>::Interpolate(
+  uint8 Function,
+  const UType& StartValue,
+  const UType& TargetValue,
+  const UType& PreviousValue,
+  const UType& NextValue,
+  const USceneComponent* const StartActorBase,
+  const USceneComponent* const TargetActorBase,
+  const USceneComponent* const PreviousActorBase,
+  const USceneComponent* const NextActorBase,
+  double Ratio,
+  bool bUseRelative,
+  ::UGMC_ReplicationCmp* const Component
+) const
+{
+  return *static_cast<UType*>(
+    Component->InterpolateValue(
+      Function,
+      FGMC_NumericValue{(void*)&StartValue},
+      FGMC_NumericValue{(void*)&TargetValue},
+      FGMC_NumericValue{(void*)&PreviousValue},
+      FGMC_NumericValue{(void*)&NextValue},
+      Ratio
+    ).GetBare()
+  );
+}
+
+void TSyncType<FInstancedStruct>::Serialize(UType& Value, FArchive& Ar, UPackageMap* Map, const FGMC_NetInfo& NetInfo, const FGMC_MetaData& MetaData) const
+{
+#if UE_VERSION_OLDER_THAN(5, 2, 0)
+
+  gmc_ckne()
+  GMC_LOG(LogGMCReplication, NetInfo.OwningComponent->GetPawnOwner(), Error, TEXT("Instanced struct net serialization not supported for this engine version."))
+
+#else
+
+  Value.NetSerialize(Ar, Map, UNUSED(bool));
+
+#endif
+}
+
+FString TSyncType<FInstancedStruct>::GetLogName(::UGMC_ReplicationCmp* const Component) const
+{
+  return TEXT("InstancedStruct");
+}
+
+FString TSyncType<FInstancedStruct>::GetLogValue(const UType& Value, ::UGMC_ReplicationCmp* const Component) const
+{
+  return FString::Printf(TEXT("<logging not supported>"));
+}
+
+EGMC_SyncType TSyncType<FInstancedStruct>::GetTypeEnum(::UGMC_ReplicationCmp* const Component) const
+{
+  return EGMC_SyncType::InstancedStruct;
 }
 
 #ifdef GMC_ENABLE_USER_SYNC_TYPES

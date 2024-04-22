@@ -7,6 +7,7 @@
 #include "Components/SceneComponent.h"
 #include "Animation/AnimMontage.h"
 #include "GameplayTagContainer.h"
+#include "InstancedStruct.h"
 
 #ifdef GMC_ENABLE_USER_SYNC_TYPES
 #include GMC_USER_INCLUDE_PATH_TYPES
@@ -56,7 +57,8 @@
   AnimMontageReference,\
   Name,\
   GameplayTag,\
-  GameplayTagContainer
+  GameplayTagContainer,\
+  InstancedStruct
 
 #ifdef GMC_ENABLE_USER_SYNC_TYPES
 #define GENERIC_SYNC_TYPES_EXP GMC_GENERIC_SYNC_TYPES, TYPE_NAMES
@@ -101,6 +103,7 @@ DEFINE_SYNC_TYPE(AnimMontageReference, ::UAnimMontage*)
 DEFINE_SYNC_TYPE(Name, ::FName)
 DEFINE_SYNC_TYPE(GameplayTag, ::FGameplayTag)
 DEFINE_SYNC_TYPE(GameplayTagContainer, ::FGameplayTagContainer)
+DEFINE_SYNC_TYPE(InstancedStruct, ::FInstancedStruct)
 
 #ifdef GMC_ENABLE_USER_SYNC_TYPES
 TYPE_DEFS
@@ -138,6 +141,7 @@ enum class EGMC_SyncType : uint8
   Name,
   GameplayTag,
   GameplayTagContainer,
+  InstancedStruct,
 
 #ifdef GMC_ENABLE_USER_SYNC_TYPES
 #include GMC_USER_INCLUDE_PATH_TYPE_LIST

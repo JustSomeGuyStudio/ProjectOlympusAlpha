@@ -261,7 +261,7 @@ public:
     ::UGMC_ReplicationCmp* const Component
   ) const
   {
-    gmc_ck(GetSimulationType() == ESimType::LocalMove)
+    gmc_ck(GetSimulationType() == ESimType::SPMove)
 
     gmc_ck(GetNumData() == Previous.GetNumData())
     for (int32 Index = 0; Index < GetNumData(); ++Index)
@@ -686,7 +686,7 @@ protected:
 
   bool ShouldForceNetUpdate(const FServerSettings& Settings) const
   {
-    gmc_ck(GetSimulationType() == ESimType::LocalMove)
+    gmc_ck(GetSimulationType() == ESimType::SPMove)
 
     if (GetSimulationState() == ESimState::Input)
     {
@@ -2544,6 +2544,45 @@ struct GMCCORE_API TSyncType<FGameplayTag> : public TSyncTypeMulti<FGameplayTag>
 
 template<>
 struct GMCCORE_API TSyncType<FGameplayTagContainer> : public TSyncTypeMulti<FGameplayTagContainer>
+{
+  void InitDefault(UType& Value, ::UGMC_ReplicationCmp* const Component) override;
+
+  void Quantize(UType& Value, ::UGMC_ReplicationCmp* const Component) const override;
+
+  bool ShouldCombine(const UType& Value, const UType& PreviousValue, ::UGMC_ReplicationCmp* const Component) const override;
+
+  void Combine(UType& Value, const UType& ValueToCombine, ::UGMC_ReplicationCmp* const Component) override;
+
+  bool IsEqual(const UType& Value, const UType& OtherValue, ::UGMC_ReplicationCmp* const Component) const override;
+
+  bool IsValid(const UType& Value, const UType& OtherValue, ::UGMC_ReplicationCmp* const Component) const override;
+
+  UType Interpolate(
+    uint8 Function,
+    const UType& StartValue,
+    const UType& TargetValue,
+    const UType& PreviousValue,
+    const UType& NextValue,
+    const USceneComponent* const StartActorBase,
+    const USceneComponent* const TargetActorBase,
+    const USceneComponent* const PreviousActorBase,
+    const USceneComponent* const NextActorBase,
+    double Ratio,
+    bool bUseRelative,
+    ::UGMC_ReplicationCmp* const Component
+  ) const override;
+
+  void Serialize(UType& Value, FArchive& Ar, UPackageMap* Map, const FGMC_NetInfo& NetInfo, const FGMC_MetaData& MetaData) const override;
+
+  FString GetLogName(::UGMC_ReplicationCmp* const Component) const override;
+
+  FString GetLogValue(const UType& Value, ::UGMC_ReplicationCmp* const Component) const override;
+
+  EGMC_SyncType GetTypeEnum(::UGMC_ReplicationCmp* const Component) const override;
+};
+
+template<>
+struct GMCCORE_API TSyncType<FInstancedStruct> : public TSyncTypeMulti<FInstancedStruct>
 {
   void InitDefault(UType& Value, ::UGMC_ReplicationCmp* const Component) override;
 

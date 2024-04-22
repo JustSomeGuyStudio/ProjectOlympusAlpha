@@ -102,9 +102,9 @@ namespace GMCCVars
 
 UGMC_OrganicMovementCmp::UGMC_OrganicMovementCmp(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
-  ReplicationSettings.DefaultPredictionSettings.AngularVelocity = EGMC_PredictionMode::None;
+  ReplicationSettings.DefaultPredictionSettings.AngularVelocity = EGMC_PredictionMode::Local;
   ReplicationSettings.DefaultSimulationSettings.AngularVelocity = EGMC_SimulationMode::None;
-  ReplicationSettings.DefaultPredictionSettings.ActorScale = EGMC_PredictionMode::None;
+  ReplicationSettings.DefaultPredictionSettings.ActorScale = EGMC_PredictionMode::Local;
   ReplicationSettings.DefaultSimulationSettings.ActorScale = EGMC_SimulationMode::None;
 
   SetWalkableFloorAngle(WalkableFloorAngle);
@@ -222,7 +222,7 @@ void UGMC_OrganicMovementCmp::BindReplicationData_Implementation()
 
   BI_RelBasedMovementAux_ActorBaseRotation = BindCompressedRotator(
     RelBasedMovementAux.ActorBaseRotation,
-    BasedMovement.Relative.bSendActorBaseRotation ? EGMC_PredictionMode::ClientAuth_Input : EGMC_PredictionMode::None,
+    BasedMovement.Relative.bSendActorBaseRotation ? EGMC_PredictionMode::ClientAuth_Input : EGMC_PredictionMode::Local,
     EGMC_CombineMode::AlwaysCombine,
     EGMC_SimulationMode::None,
     EGMC_InterpolationFunction{}
@@ -621,6 +621,11 @@ void UGMC_OrganicMovementCmp::BeginPlay()
   {
     SetSkeletalMeshReference(Mesh);
     gmc_ck(SkeletalMesh == Mesh)
+
+    if (bSmoothMesh)
+    {
+      SetComponentToSmooth(SkeletalMesh);
+    }
   }
 }
 
@@ -860,9 +865,14 @@ void UGMC_OrganicMovementCmp::GenSimulationTick_Implementation(float DeltaTime)
   RelBasedMovementAux.SavedTransforms.Save(true, this);
 }
 
-void UGMC_OrganicMovementCmp::PreSmoothing_Implementation(int32 TargetIndex, bool bExtrapolating, EGMC_InterpolationStates InterpStates)
+void UGMC_OrganicMovementCmp::PreSmoothing_Implementation(int32 TargetIndex, bool bExtrapolating, bool bRollback, EGMC_InterpolationStates InterpStates)
 {
-  Super::PreSmoothing_Implementation(TargetIndex, bExtrapolating, InterpStates);
+  Super::PreSmoothing_Implementation(TargetIndex, bExtrapolating, bRollback, InterpStates);
+
+  if (bRollback || bExtrapolating)
+  {
+    return;
+  }
 
   if (BasedMovement.IsRelative() || BasedMovement.IsForcedRelativeSimulation())
   {
@@ -2152,14 +2162,28 @@ void UGMC_OrganicMovementCmp::ApplyRotation(bool bIsDirectBotMove, const FGMC_Ro
   // If both options are set bOrientToControlRotationDirection takes precedence.
   if (bOrientToControlRotationDirection)
   {
-    RotateYawTowardsDirectionSafe(GetControllerRotation_GMC().Vector(), RotationRate, DeltaSeconds);
+    if (bUseSafeRotations)
+    {
+      RotateYawTowardsDirectionSafe(GetControllerRotation_GMC().Vector(), RotationRate, DeltaSeconds);
+    }
+    else
+    {
+      RotateYawTowardsDirection(GetControllerRotation_GMC().Vector(), RotationRate, DeltaSeconds);
+    }
     return;
   }
 
   if (bOrientToInputDirection && HasMoveInputEnabled())
   {
     // For bots with direct movement the input direction is the requested velocity direction.
-    RotateYawTowardsDirectionSafe(bIsDirectBotMove ? Velocity : GetProcessedInputVector(), RotationRate, DeltaSeconds);
+    if (bUseSafeRotations)
+    {
+      RotateYawTowardsDirectionSafe(bIsDirectBotMove ? Velocity : GetProcessedInputVector(), RotationRate, DeltaSeconds);
+    }
+    else
+    {
+      RotateYawTowardsDirection(bIsDirectBotMove ? Velocity : GetProcessedInputVector(), RotationRate, DeltaSeconds);
+    }
     return;
   }
 }
@@ -2883,7 +2907,7 @@ FVector UGMC_OrganicMovementCmp::MoveAlongFloor(const FVector& LocationDelta, FG
           }
           else
           {
-            SetActorTransform_GMC(PreviousFloor.GetSourceWorldPawnTransform());
+            SetActorTransform_GMC(PreviousFloor.GetSourceWorldPawnTransform(), true);
 
             Floor = PreviousFloor;
 
@@ -5454,7 +5478,14 @@ void UGMC_OrganicMovementCmp::ApplyAnimRootMotionRotation(const FGMC_RootMotionE
   {
     const FRotator NewRotationZ = UpdatedComponent->GetComponentRotation() + RootMotionRotatorZ;
     // Passing a rate of 0 will set the target rotation directly while still adjusting for collisions.
-    RotateYawTowardsDirectionSafe(NewRotationZ.Vector(), 0.f, DeltaSeconds);
+    if (bUseSafeRotations)
+    {
+      RotateYawTowardsDirectionSafe(NewRotationZ.Vector(), 0.f, DeltaSeconds);
+    }
+    else
+    {
+      RotateYawTowardsDirection(NewRotationZ.Vector(), 0.f, DeltaSeconds);
+    }
   }
 
   const bool bPitchAboveThreshold = FMath::Abs(FRotator::NormalizeAxis(RootMotionRotatorXY.Pitch)) >= 0.01;
@@ -6558,16 +6589,16 @@ void FGMC_RelBasedMovementAux::SV_ReconcileClientAuthValues(bool bPreMoveExecuti
     if (bSetBasedValue)
     {
       const auto& ClientActorLocation = ClientState.ActorLocation.Read();
-      Outer->SetActorLocation_GMC(Outer->GetBasedActorLocationFor(ClientActorLocation, SavedBaseEqualizationTransform));
+      Outer->SetActorLocation_GMC(Outer->GetBasedActorLocationFor(ClientActorLocation, SavedBaseEqualizationTransform), true);
     }
     else if (!bHasActorBaseRotation && ClientBase)
     {
-      Outer->SetActorLocation_GMC(SavedTransforms.GetSavedWorldActorLocation(false));
+      Outer->SetActorLocation_GMC(SavedTransforms.GetSavedWorldActorLocation(false), true);
     }
     else
     {
       const auto& ClientActorLocation = ClientState.ActorLocation.Read();
-      Outer->SetActorLocation_GMC(Outer->GetWorldActorLocationFor(ClientActorLocation, ActorBaseRotationTransform));
+      Outer->SetActorLocation_GMC(Outer->GetWorldActorLocationFor(ClientActorLocation, ActorBaseRotationTransform), true);
     }
   }
 
@@ -6576,16 +6607,16 @@ void FGMC_RelBasedMovementAux::SV_ReconcileClientAuthValues(bool bPreMoveExecuti
     if (bSetBasedValue)
     {
       const auto& ClientActorRotation = ClientState.ActorRotation.Read();
-      Outer->SetActorRotation_GMC(Outer->GetBasedActorRotationFor(ClientActorRotation, SavedBaseEqualizationTransform));
+      Outer->SetActorRotation_GMC(Outer->GetBasedActorRotationFor(ClientActorRotation, SavedBaseEqualizationTransform), true);
     }
     else if (!bHasActorBaseRotation && ClientBase)
     {
-      Outer->SetActorRotation_GMC(SavedTransforms.GetSavedWorldActorRotation(false));
+      Outer->SetActorRotation_GMC(SavedTransforms.GetSavedWorldActorRotation(false), true);
     }
     else
     {
       const auto& ClientActorRotation = ClientState.ActorRotation.Read();
-      Outer->SetActorRotation_GMC(Outer->GetWorldActorRotationFor(ClientActorRotation, ActorBaseRotationTransform));
+      Outer->SetActorRotation_GMC(Outer->GetWorldActorRotationFor(ClientActorRotation, ActorBaseRotationTransform), true);
     }
   }
 
@@ -6680,12 +6711,12 @@ void FGMC_RelBasedMovementAux::CL_ReconcileClientAuthValues(bool bPreMoveExecuti
     if (bSetBasedValue)
     {
       const auto& BasedValue = Outer->GetBasedActorLocationFor(OriginalValue, SavedBaseEqualizationTransform);
-      Outer->SetActorLocation_GMC(BasedValue);
+      Outer->SetActorLocation_GMC(BasedValue, true);
     }
     else
     {
       const auto& WorldValue = OriginalBase ? Outer->GetWorldActorLocationFor(OriginalValue, OriginalReplayMoveBaseRotationTransform) : OriginalValue;
-      Outer->SetActorLocation_GMC(WorldValue);
+      Outer->SetActorLocation_GMC(WorldValue, true);
     }
   }
 
@@ -6695,12 +6726,12 @@ void FGMC_RelBasedMovementAux::CL_ReconcileClientAuthValues(bool bPreMoveExecuti
     if (bSetBasedValue)
     {
       const auto& BasedValue = Outer->GetBasedActorRotationFor(OriginalValue, SavedBaseEqualizationTransform);
-      Outer->SetActorRotation_GMC(BasedValue);
+      Outer->SetActorRotation_GMC(BasedValue, true);
     }
     else
     {
       const auto& WorldValue = OriginalBase ? Outer->GetWorldActorRotationFor(OriginalValue, OriginalReplayMoveBaseRotationTransform) : OriginalValue;
-      Outer->SetActorRotation_GMC(WorldValue);
+      Outer->SetActorRotation_GMC(WorldValue, true);
     }
   }
 

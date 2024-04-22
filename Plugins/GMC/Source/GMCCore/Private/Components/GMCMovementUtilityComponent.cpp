@@ -4322,10 +4322,21 @@ bool UGMC_MovementUtilityCmp::FilterOverlap(
   bool bClientReplay,
   bool bSimulationInterp,
   bool bSimulationExtrap,
+  const UPrimitiveComponent* OtherComponent,
   FGMC_FilterOverlapAux& Aux,
   EGMC_OverlapType Type
 )
 {
+  if (!IsValid(PawnOwner))
+  {
+    return false;
+  }
+
+  if (OtherComponent != PawnOwner->GetRootComponent())
+  {
+    return false;
+  }
+
   auto& PawnStatus = Aux.Status.FindOrAdd(this);
 
   const auto Initialize = [this, Type](bool bInitToActive, auto& PawnStatus, auto& Aux)

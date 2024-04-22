@@ -255,7 +255,31 @@ bool AGMC_Pawn::SV_NeedsNetReserialization() const
   return SV_bNeedsNetReserialization;
 }
 
-void AGMC_Pawn::SV_ReceiveMoves_Implementation(const TArray<FGMC_Move>& RemoteMoves)
+void AGMC_Pawn::SV_ReceiveClientSendStatus_Implementation(bool bIsUsingUnreliableMoves)
+{
+  if (!IsValid(ReplicationComponent))
+  {
+    GMC_LOG(LogGMCPawn, this, Error, TEXT("No movement component of type \"%s\" found."), TO_STR(UGMC_ReplicationCmp))
+    gmc_ckne()
+    return;
+  }
+
+  ReplicationComponent->SV_ReceiveClientSendStatus_Implementation(bIsUsingUnreliableMoves);
+}
+
+bool AGMC_Pawn::SV_ReceiveClientSendStatus_Validate(bool bIsUsingUnreliableMoves)
+{
+  if (!IsValid(ReplicationComponent))
+  {
+    GMC_LOG(LogGMCPawn, this, Error, TEXT("No movement component of type \"%s\" found."), TO_STR(UGMC_ReplicationCmp))
+    gmc_ckne()
+    return false;
+  }
+
+  return ReplicationComponent->SV_ReceiveClientSendStatus_Validate(bIsUsingUnreliableMoves);
+}
+
+void AGMC_Pawn::SV_ReceiveMovesReliable_Implementation(const TArray<FGMC_Move>& RemoteMoves)
 {
   if (!IsValid(ReplicationComponent))
   {
@@ -267,7 +291,31 @@ void AGMC_Pawn::SV_ReceiveMoves_Implementation(const TArray<FGMC_Move>& RemoteMo
   ReplicationComponent->SV_ReceiveMoves_Implementation();
 }
 
-bool AGMC_Pawn::SV_ReceiveMoves_Validate(const TArray<FGMC_Move>& RemoteMoves)
+bool AGMC_Pawn::SV_ReceiveMovesReliable_Validate(const TArray<FGMC_Move>& RemoteMoves)
+{
+  if (!IsValid(ReplicationComponent))
+  {
+    GMC_LOG(LogGMCPawn, this, Error, TEXT("No movement component of type \"%s\" found."), TO_STR(UGMC_ReplicationCmp))
+    gmc_ckne()
+    return false;
+  }
+
+  return ReplicationComponent->SV_ReceiveMoves_Validate();
+}
+
+void AGMC_Pawn::SV_ReceiveMovesUnreliable_Implementation(const TArray<FGMC_Move>& RemoteMoves)
+{
+  if (!IsValid(ReplicationComponent))
+  {
+    GMC_LOG(LogGMCPawn, this, Error, TEXT("No movement component of type \"%s\" found."), TO_STR(UGMC_ReplicationCmp))
+    gmc_ckne()
+    return;
+  }
+
+  ReplicationComponent->SV_ReceiveMoves_Implementation();
+}
+
+bool AGMC_Pawn::SV_ReceiveMovesUnreliable_Validate(const TArray<FGMC_Move>& RemoteMoves)
 {
   if (!IsValid(ReplicationComponent))
   {

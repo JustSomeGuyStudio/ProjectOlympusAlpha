@@ -296,7 +296,7 @@ inline FString GetObjectNameWithOuter(const UObject* Object)
       GMCNetMode = GetNetModeAsString(NetOwner->GetNetMode()),\
       GMCNetworkRole = TEXT("");\
       ENetRole GMCRole = NetOwner->GetLocalRole();\
-      const auto& GMCPawnNetOwner = Cast<APawn>(NetOwner);\
+      const auto GMCPawnNetOwner = NetOwner->IsA<APawn>() ? (APawn*)NetOwner : nullptr;\
       if (GMCRole == ROLE_Authority && GMCPawnNetOwner)\
       {\
         FString GMCControl = GMCPawnNetOwner->IsLocallyControlled() ? TEXT("local  ") : TEXT("remote ");\

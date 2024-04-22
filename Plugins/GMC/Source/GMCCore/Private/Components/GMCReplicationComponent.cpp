@@ -404,20 +404,23 @@ void UGMC_ReplicationCmp::BeginPlayNetworked()
     TEXT("The pawn's root component is set to replicate - some replicated properties may interfere with GMC functionality.")
   )
 
-  GMC_CLOG(
-    ClientSendRate > 0 && 1.f / ClientSendRate > MaxMoveDeltaTime,
-    LogGMCReplication,
-    PawnOwner,
-    Warning,
-    TEXT("1 / \"%s\" (%f) > \"%s\" (%f), increasing \"%s\" to %f s."),
-    TO_STR(ClientSendRate),
-    1.f / ClientSendRate,
-    TO_STR(MaxMoveDeltaTime),
-    MaxMoveDeltaTime,
-    TO_STR(MaxMoveDeltaTime),
-    1.f / ClientSendRate
-  )
-  MaxMoveDeltaTime = FMath::Max(MaxMoveDeltaTime, 1.f / ClientSendRate);
+  if (ClientSendRate > 0)
+  {
+    GMC_CLOG(
+      1.f / ClientSendRate > MaxMoveDeltaTime,
+      LogGMCReplication,
+      PawnOwner,
+      Warning,
+      TEXT("1 / \"%s\" (%f) > \"%s\" (%f), increasing \"%s\" to %f s."),
+      TO_STR(ClientSendRate),
+      1.f / ClientSendRate,
+      TO_STR(MaxMoveDeltaTime),
+      MaxMoveDeltaTime,
+      TO_STR(MaxMoveDeltaTime),
+      1.f / ClientSendRate
+    )
+    MaxMoveDeltaTime = FMath::Max(MaxMoveDeltaTime, 1.f / ClientSendRate);
+  }
 
   GMC_CLOG(
     MaxCombinedDeltaTime > MaxMoveDeltaTime,
@@ -718,26 +721,16 @@ void UGMC_ReplicationCmp::UpdateLocallyControlledServerPawn()
 
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PostLocalMoveExecution, LocalMove());
 
-  if (IsNetworkedServer())
+  if (IsNetworkedServer() && ShouldAddToSimulationHistory(LocalMove().MetaData.Timestamp))
   {
-    const int32 LastIdx = MoveHistory.Num() - 1;
-    if (LastIdx >= 0)
-    {
-      const auto& PreviousMove = MoveHistory[LastIdx];
-      if (
-        CheckSyncDataForcedNetUpdate(LocalMove().OutputState, PreviousMove.OutputState, this) ||
-        CheckSyncDataForcedNetUpdate(LocalMove().InputState, PreviousMove.InputState, this) ||
-        CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_CheckSyncDataForcedNetUpdate_Custom, LocalMove(), PreviousMove)
-      )
-      {
-        PawnOwner->ForceNetUpdate();
-      }
-    }
-
     LocalMove().CopyDataValuesTo(SPMove(), this);
     LocalMove().CopyMetaDataTo(SPMove(), this);
 
+    SV_CheckForcedNetUpdate(SPMove());
+
     AddToSimulationHistory(SPMove());
+
+    CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_OnSPMoveSaved, SPMove());
   }
 }
 
@@ -1020,8 +1013,11 @@ void UGMC_ReplicationCmp::CL_OnRepAPMove()
 
   if (!bReceivedPredictedMove)
   {
-    // The AP move contains the same data simulated proxies receive in this case.
-    AddToSimulationHistory(APMove());
+    if (ShouldAddToSimulationHistory(APMove().MetaData.Timestamp))
+    {
+      // The AP move contains the same data simulated proxies receive in this case.
+      AddToSimulationHistory(APMove());
+    }
 
     return;
   }
@@ -1242,7 +1238,7 @@ void UGMC_ReplicationCmp::CL_OnRepSPMove()
       gmc_ck(IsUsingClientAuthPhysicsReplication() == bReceivedUsingClientAuthPhysics)
     }
   }
-  else
+  else if (ShouldAddToSimulationHistory(SPMove().MetaData.Timestamp))
   {
     AddToSimulationHistory(SPMove());
   }
@@ -1327,11 +1323,11 @@ void UGMC_ReplicationCmp::CL_PostReplay_Implementation()
   }
   if (IsClientAuth(PredictionSettings.ActorLocation))
   {
-    SetActorLocation_GMC(PreCorrectionState.ActorLocation.Read());
+    SetActorLocation_GMC(PreCorrectionState.ActorLocation.Read(), true);
   }
   if (IsClientAuth(PredictionSettings.ActorRotation))
   {
-    SetActorRotation_GMC(PreCorrectionState.ActorRotation.Read());
+    SetActorRotation_GMC(PreCorrectionState.ActorRotation.Read(), true);
   }
   if (IsClientAuth(PredictionSettings.ActorScale))
   {
@@ -1833,6 +1829,22 @@ float UGMC_ReplicationCmp::CalculateSubDeltaTime(
   return SubDeltaTime;
 }
 
+float UGMC_ReplicationCmp::GetClientSendRate() const
+{
+  gmc_ck(ClientSendRate >= 0)
+  gmc_ck(IsReadyForPlay()) // Don't call before BeginPlay has finished.
+
+  return !IsUsingUnreliableClientMoves() ? ClientSendRate : STAND_IN_CLIENT_SEND_RATE_UNRELIABLE;
+}
+
+float UGMC_ReplicationCmp::GetMaxCombinedDeltaTime() const
+{
+  gmc_ck(MaxCombinedDeltaTime >= 0.000001f)
+  gmc_ck(IsReadyForPlay()) // Don't call before BeginPlay has finished.
+
+  return !IsUsingUnreliableClientMoves() ? MaxCombinedDeltaTime : CLIENT_MAX_MOVE_COMBINE_DELTA_TIME_UNRELIABLE;
+}
+
 void UGMC_ReplicationCmp::UpdatePhysicsVelocity()
 {
   if (!IsValid(PawnOwner))
@@ -1886,6 +1898,30 @@ void UGMC_ReplicationCmp::SetSimulatedPawnState(const FGMC_PawnState& State, boo
   }
 }
 
+void UGMC_ReplicationCmp::SV_ReceiveClientSendStatus_Implementation(bool bIsUsingUnreliableMoves)
+{
+  gmc_ck(IsRemotelyControlledServerPawn())
+  gmc_ck(ComponentStatus.bUseUnreliableClientMoves != bIsUsingUnreliableMoves)
+
+  ComponentStatus.bUseUnreliableClientMoves = bIsUsingUnreliableMoves;
+
+  if (bIsUsingUnreliableMoves)
+  {
+    GMC_LOG(LogGMCReplication, GetPawnOwner(), VeryVerbose, TEXT("Unreliable client move transmission enabled."))
+    CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnUnreliableClientMovesActivated);
+  }
+  else
+  {
+    GMC_LOG(LogGMCReplication, GetPawnOwner(), VeryVerbose, TEXT("Unreliable client move transmission disabled."))
+    CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnUnreliableClientMovesDeactivated);
+  }
+}
+
+bool UGMC_ReplicationCmp::SV_ReceiveClientSendStatus_Validate(bool bIsUsingUnreliableMoves)
+{
+  return true;
+}
+
 void UGMC_ReplicationCmp::SV_ReceiveMoves_Implementation()
 {
   DEBUG_LOG_CLIENT_MOVE_TRACE_SERVER_RECEIVED_MOVES
@@ -1915,13 +1951,11 @@ bool UGMC_ReplicationCmp::SV_AuditClientMoves(TArray<FGMC_Move>& RemoteMoves)
 
   if (MoveHistory.Num() > 0)
   {
-    const double LastTimestamp = MoveHistory.Last().MetaData.Timestamp;
     for (int32 Index = 0; Index < RemoteMoves.Num(); ++Index)
     {
-      if (RemoteMoves[Index].MetaData.Timestamp > LastTimestamp)
+      if (RemoteMoves[Index].MetaData.Timestamp > SV_RemoteMoveExecutionAux.LastAcceptedClientTimestamp)
       {
         // The client timestamps are always in ascending order so the following moves should have valid timestamps as well.
-
         gmc_ckc(
           double PreviousTimestamp = -1.;
           for (const auto& Move : RemoteMoves)
@@ -1943,6 +1977,9 @@ bool UGMC_ReplicationCmp::SV_AuditClientMoves(TArray<FGMC_Move>& RemoteMoves)
 
   if (RemoteMoves.Num() == 0)
   {
+    // Also needs to be updated here, otherwise the remote pawn could get permanently blocked by proxy moves due to timestamp discrepancies.
+    SV_RemoteMoveExecutionAux.LastRemotePawnUpdateTime = GetTime();
+
     return false;
   }
 
@@ -1964,6 +2001,13 @@ bool UGMC_ReplicationCmp::SV_AuditClientMoves(TArray<FGMC_Move>& RemoteMoves)
         SV_TimestampVerificationAux.InfractionsThisPeriod
       )
     }
+  }
+
+  if (bClientCredible)
+  {
+    // The last accepted client move timestamp may not always be the same as the last received client timestamp or the last one in the move history. The
+    // distinction is important when unreliably sent client moves are involved.
+    SV_RemoteMoveExecutionAux.LastAcceptedClientTimestamp = RemoteMoves[RemoteMoves.Num() - 1].MetaData.Timestamp;
   }
 
   return bClientCredible;
@@ -2185,42 +2229,35 @@ void UGMC_ReplicationCmp::SV_ExecuteClientMoves(TArray<FGMC_Move>& ClientMoves, 
       ClientMove.MetaData.ServerAuthPhysicsTimestamp = GetTime();
     }
 
-    const int32 LastIdx = MoveHistory.Num() - 1;
-    if (LastIdx >= 0)
-    {
-      const auto& PreviousMove = MoveHistory[LastIdx];
-      if (
-        CheckSyncDataForcedNetUpdate(ClientMove.OutputState, PreviousMove.OutputState, this) ||
-        CheckSyncDataForcedNetUpdate(ClientMove.InputState, PreviousMove.InputState, this) ||
-        CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_CheckSyncDataForcedNetUpdate_Custom, ClientMove, PreviousMove)
-      )
-      {
-        PawnOwner->ForceNetUpdate();
-      }
-    }
-
     ClientMove.CopyDataValuesTo(APMove(), this);
     ClientMove.CopyMetaDataTo(APMove(), this);
-    ClientMove.CopyDataValuesTo(SPMove(), this);
-    ClientMove.CopyMetaDataTo(SPMove(), this);
-
-    // Not relevant for simulated proxy data.
-    SPMove().MetaData.bPredictedClientMove = false;
-    SPMove().MetaData.bValidClientMove = false;
-
-    // The move execution happened based on the configuration of the client-owned pawn so we need to convert SP move data to relative values in some cases.
-    if (bUseClientPrediction && !bUseRelativeValuesForPrediction && bUseRelativeValuesForSimulation)
-    {
-      ToRelativeSyncData(SPMove().InputState, SPMove().InputState.ActorBase.Read(), DataFilter::None, DataFilterMode::Inclusive, this);
-      ToRelativeSyncData(SPMove().OutputState, SPMove().OutputState.ActorBase.Read(), DataFilter::None, DataFilterMode::Inclusive, this);
-    }
 
     CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_OnAPMoveSaved, APMove());
-    CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_OnSPMoveSaved, SPMove());
 
     DEBUG_LOG_CLIENT_MOVE_TRACE_SERVER_SAVED_APMOVE
 
-    AddToSimulationHistory(SPMove());
+    if (ShouldAddToSimulationHistory(ClientMove.MetaData.Timestamp))
+    {
+      ClientMove.CopyDataValuesTo(SPMove(), this);
+      ClientMove.CopyMetaDataTo(SPMove(), this);
+
+      // Not relevant for simulated proxy data.
+      SPMove().MetaData.bPredictedClientMove = false;
+      SPMove().MetaData.bValidClientMove = false;
+
+      // The move execution happened based on the configuration of the client-owned pawn so we need to convert SP move data to relative values in some cases.
+      if (bUseClientPrediction && !bUseRelativeValuesForPrediction && bUseRelativeValuesForSimulation)
+      {
+        ToRelativeSyncData(SPMove().InputState, SPMove().InputState.ActorBase.Read(), DataFilter::None, DataFilterMode::Inclusive, this);
+        ToRelativeSyncData(SPMove().OutputState, SPMove().OutputState.ActorBase.Read(), DataFilter::None, DataFilterMode::Inclusive, this);
+      }
+
+      SV_CheckForcedNetUpdate(SPMove());
+
+      AddToSimulationHistory(SPMove());
+
+      CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_OnSPMoveSaved, SPMove());
+    }
 
     CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_PostRemoteMoveExecution, ClientMove);
   }
@@ -2248,6 +2285,28 @@ void UGMC_ReplicationCmp::SV_ExecuteClientMoves(TArray<FGMC_Move>& ClientMoves, 
     SV_OnSwapRemoteServerPawnSmoothingBuffer(SV_RemoteServerPawnSmoothingSwapBuffer.Buffer, EGMC_NetContext::RemoteServerPawn_Smoothing);
     gmc_ck(SV_RemoteServerPawnSmoothingSwapBuffer.HasEvenNumberOfSwaps())
   }
+}
+
+bool UGMC_ReplicationCmp::SV_CheckForcedNetUpdate(const FGMC_Move& Move)
+{
+  gmc_ck(PawnOwner->GetLocalRole() == ROLE_Authority)
+
+  const int32 LastIdx = MoveHistory.Num() - 1;
+  if (LastIdx >= 0)
+  {
+    const auto& PreviousMove = MoveHistory[LastIdx];
+    if (
+      CheckSyncDataForcedNetUpdate(Move.OutputState, PreviousMove.OutputState, this) ||
+      CheckSyncDataForcedNetUpdate(Move.InputState, PreviousMove.InputState, this) ||
+      CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, SV_CheckSyncDataForcedNetUpdate_Custom, Move, PreviousMove)
+      )
+    {
+      PawnOwner->ForceNetUpdate();
+      return true;
+    }
+  }
+
+  return false;
 }
 
 void UGMC_ReplicationCmp::SV_ApplyValidatedState(
@@ -2356,6 +2415,11 @@ bool UGMC_ReplicationCmp::SV_VerifyTimestamps(const TArray<FGMC_Move>& ClientMov
 
   gmc_ck(ClientMoves.Num() > 0)
 
+  if (GetClientSendRate() <= 0)
+  {
+    return false;
+  }
+
   const auto& Controller = Cast<AGMC_PlayerController>(PawnOwner->GetController());
   if (!IsValid(Controller))
   {
@@ -2432,7 +2496,7 @@ bool UGMC_ReplicationCmp::SV_VerifyTimestamps(const TArray<FGMC_Move>& ClientMov
   // the amount of packet loss and jitter in the client connection).
   const double ServerTime = GetTime();
   const float EstimatedClientLatency = Controller->GetPingInMilliseconds() / 1000.f / 2.f;
-  const float EstimatedSendDelay = ClientSendRate > 0 ? 1. / ClientSendRate : 0.;
+  const float EstimatedSendDelay = 1.f / GetClientSendRate();
   const float TotalEstimatedClientDelay = EstimatedSendDelay + EstimatedClientLatency;
 
   if (SV_TimestampVerificationAux.VERIFY_WORLD_TIME)
@@ -2841,7 +2905,7 @@ bool UGMC_ReplicationCmp::SV_ProcessProxyMove()
     return false;
   }
 
-  gmc_ck(SV_RemoteMoveExecutionAux.LastRemotePawnUpdateTime >= 0.)
+  gmc_ck(SV_RemoteMoveExecutionAux.LastRemotePawnUpdateTime > 0.)
 
   const double CurrentTime = GetTime();
   const double ElapsedTime = CurrentTime - SV_RemoteMoveExecutionAux.LastRemotePawnUpdateTime;
@@ -2916,7 +2980,7 @@ void UGMC_ReplicationCmp::SV_UpdateAdaptiveDelayBufferTime(APlayerController* Cl
       GMC_LOG(
         LogGMCReplication,
         PawnOwner,
-        Verbose,
+        VeryVerbose,
         TEXT("Client buffer time request rejected (requested = %f, pending = %f, applied = %f)."),
         NewBufferTime,
         ClientData.RequestedDynamicBufferTime,
@@ -3134,8 +3198,10 @@ void UGMC_ReplicationCmp::CL_OnClientAuthPhysicsSimulationToggled_Implementation
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnClientAuthPhysicsSimulationToggled, bEnabled, Settings);
 }
 
-bool UGMC_ReplicationCmp::CheckReliableBuffer(AActor* Owner, int32 ProtectionMargin)
+bool UGMC_ReplicationCmp::CheckReliableBuffer(AActor* Owner, int32 ProtectionMargin, int32& OutNumPendingPackets)
 {
+  OutNumPendingPackets = 0;
+
   if (!Owner)
   {
     return false;
@@ -3153,9 +3219,11 @@ bool UGMC_ReplicationCmp::CheckReliableBuffer(AActor* Owner, int32 ProtectionMar
     return false;
   }
 
+  OutNumPendingPackets = ActorChannel->NumOutRec;
+
   // Check the number of out packets waiting to be acknowledged. The margin should not be too small so that other reliable client RPCs that may exist outside of
   // the replication component won't cause a disconnect.
-  if (ActorChannel->NumOutRec < (RELIABLE_BUFFER - 1) - FMath::Clamp(ProtectionMargin, 0, RELIABLE_BUFFER - 1))
+  if (OutNumPendingPackets < (RELIABLE_BUFFER - 1) - FMath::Clamp(ProtectionMargin, 0, RELIABLE_BUFFER - 1))
   {
     return true;
   }
@@ -3257,7 +3325,13 @@ bool UGMC_ReplicationCmp::CL_ShouldEnqueueMove(const FGMC_Move& CurrentMove, con
 
   bOutCombineMove = false;
 
-  if (!CheckReliableBuffer(PawnOwner, SEND_CLIENT_MOVES_OVERFLOW_PROTECTION))
+  int32 NumPendingPackets = 0;
+
+  const bool bReliableBufferFull = !CheckReliableBuffer(PawnOwner, SEND_CLIENT_MOVES_OVERFLOW_PROTECTION, NumPendingPackets);
+
+  ComponentStatus.CL_SetUseUnreliableClientMoves(NumPendingPackets, this);
+
+  if (bReliableBufferFull)
   {
     // The reliable buffer is about to overflow, do not accept any more moves until the buffer has more capacity again.
     GMC_LOG(
@@ -3320,7 +3394,7 @@ bool UGMC_ReplicationCmp::CL_ShouldEnqueueMove(const FGMC_Move& CurrentMove, con
     return true;
   }
 
-  if (PreviousMove.MetaData.DeltaTime + CurrentMove.MetaData.DeltaTime > MaxCombinedDeltaTime)
+  if (PreviousMove.MetaData.DeltaTime + CurrentMove.MetaData.DeltaTime > GetMaxCombinedDeltaTime())
   {
     // Enqueue if we would exceed the max combined delta time.
     gmc_ck(!bOutCombineMove)
@@ -3355,12 +3429,23 @@ bool UGMC_ReplicationCmp::CL_ShouldEnqueueMove(const FGMC_Move& CurrentMove, con
 
 bool UGMC_ReplicationCmp::CL_ShouldSendMoves() const
 {
-  if (ClientSendRate <= 0 || CL_MoveExecutionAux.PendingMoves.Num() == 0)
+  if (CL_MoveExecutionAux.PendingMoves.Num() == 0)
   {
     return false;
   }
 
-  if (CL_MoveExecutionAux.TimeSinceLastMoveBatchWasSent > 1.f / ClientSendRate)
+  if (IsUsingUnreliableClientMoves())
+  {
+    // Get the client moves out as fast as possible when using unreliable RPCs.
+    return true;
+  }
+
+  if (GetClientSendRate() <= 0)
+  {
+    return false;
+  }
+
+  if (CL_MoveExecutionAux.TimeSinceLastMoveBatchWasSent > 1.f / GetClientSendRate())
   {
     return true;
   }
@@ -3371,7 +3456,16 @@ bool UGMC_ReplicationCmp::CL_ShouldSendMoves() const
 void UGMC_ReplicationCmp::CL_SendMoves()
 {
   gmc_ck(GetGMCPawnOwner())
-  GetGMCPawnOwner()->SV_ReceiveMoves(CL_MoveExecutionAux.PendingMoves);
+
+  if (IsUsingUnreliableClientMoves())
+  {
+    GetGMCPawnOwner()->SV_ReceiveMovesUnreliable(CL_MoveExecutionAux.PendingMoves);
+  }
+  else
+  {
+    GetGMCPawnOwner()->SV_ReceiveMovesReliable(CL_MoveExecutionAux.PendingMoves);
+  }
+
   DEBUG_LOG_CLIENT_MOVE_TRACE_CLIENT_SENT_MOVES
 }
 
@@ -3867,12 +3961,12 @@ bool UGMC_ReplicationCmp::CL_AddToPredictionHistory(const FGMC_Move& NewMove, bo
   return true;
 }
 
-void UGMC_ReplicationCmp::SmoothNone(int32 LastIdx, EGMC_InterpolationStates InterpStates, bool bSkipBoneUpdate, EGMC_NetContext Context)
+void UGMC_ReplicationCmp::SmoothNone(int32 LastIdx, bool bRollback, EGMC_InterpolationStates InterpStates, bool bSkipBoneUpdate, EGMC_NetContext Context)
 {
   gmc_ck(MoveHistory.Num() >= 2)
   gmc_ck(IsValidMoveHistoryIndex(LastIdx))
 
-  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, LastIdx, false, InterpStates);
+  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, LastIdx, false, bRollback, InterpStates);
 
   const auto& InterpState = InterpStates == EGMC_InterpolationStates::Input ? MoveHistory[LastIdx].InputState : MoveHistory[LastIdx].OutputState;
   SetSimulatedPawnState(InterpState, bSkipBoneUpdate, bUseRelativeValuesForSimulation, Context);
@@ -3885,6 +3979,7 @@ void UGMC_ReplicationCmp::SmoothMatchLatest(
   int32 PrevIdx,
   float Alpha,
   bool bInterpolating,
+  bool bRollback,
   float TeleportThreshold,
   EGMC_InterpolationStates InterpStates,
   bool bSkipBoneUpdate,
@@ -3898,7 +3993,7 @@ void UGMC_ReplicationCmp::SmoothMatchLatest(
   gmc_ck(!IsUsingClientAuthPhysicsReplication())
   gmc_ck(MatchLatestParamsAux.bSimulationStartStateInitialized)
 
-  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, LastIdx, !bInterpolating, InterpStates);
+  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, LastIdx, !bInterpolating, bRollback, InterpStates);
 
   const GMCReplication::ESimState InterpStatesNative = ToNativeState(InterpStates);
   const bool bUseInputStates = InterpStatesNative == GMCReplication::ESimState::Input;
@@ -3954,6 +4049,112 @@ void UGMC_ReplicationCmp::SmoothMatchLatest(
   DEBUG_LOG_SMOOTHING_MATCH_LATEST
 }
 
+void UGMC_ReplicationCmp::SmoothComponent(
+  double Time,
+  float DeltaTime,
+  FTransform StartTransform,
+  FTransform TargetTransform,
+  FGMC_SmoothComponentParams& InOutSmoothComponentParams
+)
+{
+  gmc_ck(Time >= 0.)
+
+  USceneComponent* Component = InOutSmoothComponentParams.Component;
+
+  if (!IsValid(Component))
+  {
+    return;
+  }
+
+  const auto& Owner = GetOwner();
+  if (!IsValid(Owner))
+  {
+    return;
+  }
+
+  // We must consider the base offset of the component that is being smoothed.
+  TargetTransform = InOutSmoothComponentParams.ComponentOffset * TargetTransform;
+
+  const bool bFirstUpdate = InOutSmoothComponentParams.SimTime == 0.;
+  if (
+    bFirstUpdate ||
+    (
+      InOutSmoothComponentParams.TeleportThreshold >= 0.f &&
+      FVector::Dist(StartTransform.GetLocation(), TargetTransform.GetLocation()) >= InOutSmoothComponentParams.TeleportThreshold
+    )
+  )
+  {
+    // Set directly to the target transform on the first update or when teleporting.
+    InOutSmoothComponentParams.SimTime = InOutSmoothComponentParams.TargetTransformTimestamp = Time;
+    InOutSmoothComponentParams.TargetDelta = 0.f;
+  }
+  else if (Time > InOutSmoothComponentParams.TargetTransformTimestamp)
+  {
+    // Calculate the time between the last two updates.
+    const float ElapsedTime = Time - InOutSmoothComponentParams.TargetTransformTimestamp;
+
+    // Do not exceed the target and do not fall behind by more than Delta.
+    const float MaxDelta = FMath::Min(InOutSmoothComponentParams.MaxDeltaTime, Time);
+    const float MinDelta = FMath::Min(InOutSmoothComponentParams.MinDeltaTime, MaxDelta);
+    const float Delta = FMath::Clamp(ElapsedTime * InOutSmoothComponentParams.DeltaTimeDilation, MinDelta, MaxDelta);
+    const double MinSimTime = Time - Delta;
+    InOutSmoothComponentParams.SimTime = FMath::Clamp(InOutSmoothComponentParams.SimTime, MinSimTime, Time);
+
+    const double TargetTime = Time - MinDelta - (MaxDelta - MinDelta) / 2.;
+    const double TargetMin = TargetTime - UE_KINDA_SMALL_NUMBER;
+    const double TargetMax = TargetTime + UE_KINDA_SMALL_NUMBER;
+    if (InOutSmoothComponentParams.SimTime > TargetMax)
+    {
+      InOutSmoothComponentParams.SimTime = FMath::LerpStable(TargetTime, InOutSmoothComponentParams.SimTime, 0.5);
+    }
+    else if (InOutSmoothComponentParams.SimTime < TargetMin)
+    {
+      InOutSmoothComponentParams.SimTime = FMath::LerpStable(InOutSmoothComponentParams.SimTime, TargetTime, 0.5);
+    }
+
+    // Determine the delta between the new target and the current simulation.
+    InOutSmoothComponentParams.TargetDelta = Time - InOutSmoothComponentParams.SimTime;
+
+    InOutSmoothComponentParams.TargetTransformTimestamp = Time;
+  }
+
+  // Advance the simulation time.
+  InOutSmoothComponentParams.SimTime = FMath::Clamp(InOutSmoothComponentParams.SimTime, 0., UE_DOUBLE_BIG_NUMBER) + DeltaTime;
+
+  float Alpha = 1.f;
+  if (InOutSmoothComponentParams.TargetDelta > UE_KINDA_SMALL_NUMBER)
+  {
+    // Compute the interpolation ratio for this iteration.
+    const float RemainingTime = InOutSmoothComponentParams.TargetTransformTimestamp - InOutSmoothComponentParams.SimTime;
+    const float TargetTime = InOutSmoothComponentParams.TargetDelta - RemainingTime;
+    Alpha = TargetTime / InOutSmoothComponentParams.TargetDelta;
+  }
+
+  // Calculate the interpolated transform to set.
+  FTransform NewTransform{};
+  NewTransform.SetLocation(FMath::Lerp(StartTransform.GetLocation(), TargetTransform.GetLocation(), Alpha));
+  NewTransform.SetRotation(FQuat::Slerp(StartTransform.GetRotation(), TargetTransform.GetRotation(), Alpha));
+  NewTransform.SetScale3D(FMath::Lerp(StartTransform.GetScale3D(), TargetTransform.GetScale3D(), Alpha));
+
+  // If the passed component is a skeletal mesh we may want to skip updating kinematic bones.
+  const auto& SkeletalMeshComponent = Cast<USkeletalMeshComponent>(Component);
+  EKinematicBonesUpdateToPhysics::Type SavedBoneUpdateSetting{EKinematicBonesUpdateToPhysics::Type::SkipSimulatingBones};
+  const bool bShouldSkipBoneUpdate = InOutSmoothComponentParams.bSkipBoneUpdate && SkeletalMeshComponent;
+  if (bShouldSkipBoneUpdate)
+  {
+    SavedBoneUpdateSetting = SkeletalMeshComponent->KinematicBonesUpdateType;
+    SkeletalMeshComponent->KinematicBonesUpdateType = EKinematicBonesUpdateToPhysics::Type::SkipAllBones;
+  }
+
+  Component->SetWorldTransform(NewTransform, false, nullptr, InOutSmoothComponentParams.TeleportPhysics);
+
+  if (bShouldSkipBoneUpdate)
+  {
+    // Restore the original flag.
+    SkeletalMeshComponent->KinematicBonesUpdateType = SavedBoneUpdateSetting;
+  }
+}
+
 void UGMC_ReplicationCmp::SmoothDelay(
   int32 StartIdx,
   int32 TargetIdx,
@@ -3970,7 +4171,7 @@ void UGMC_ReplicationCmp::SmoothDelay(
   gmc_ck(IsValidMoveHistoryIndex(StartIdx))
   gmc_ck(IsValidMoveHistoryIndex(TargetIdx))
 
-  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, TargetIdx, !bInterpolating, InterpStates);
+  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, TargetIdx, !bInterpolating, bRollback, InterpStates);
 
   const FGMC_Move& StartMove = MoveHistory[StartIdx];
   const FGMC_Move& TargetMove = MoveHistory[TargetIdx];
@@ -4472,6 +4673,7 @@ void UGMC_ReplicationCmp::SmoothSimulated(
   float InMaxTimeStep,
   int32 InMaxIterations,
   bool bInterpolating,
+  bool bRollback,
   EGMC_InterpolationStates SimStates,
   bool bSkipBoneUpdate,
   EGMC_NetContext Context
@@ -4482,7 +4684,7 @@ void UGMC_ReplicationCmp::SmoothSimulated(
   gmc_ck(!IsUsingClientAuthPhysicsReplication())
   gmc_ck(SimStates == EGMC_InterpolationStates::Input || SimStates == EGMC_InterpolationStates::Output)
 
-  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, LastIdx, !bInterpolating, SimStates);
+  CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, PreSmoothing, LastIdx, !bInterpolating, bRollback, SimStates);
 
   // Copy the latest move, we don't want to change move history data.
   FGMC_Move Move = MoveHistory[LastIdx];
@@ -4556,6 +4758,9 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
   EGMC_NetContext SmoothingContext = GetSmoothingContext();
   bool bDidInterpolate = false;
 
+  const auto& PostSmoothComponent = PostSmoothingParams.Component;
+  FTransform PostSmoothComponentStartTransform = IsValid(PostSmoothComponent) ? PostSmoothComponent->GetComponentTransform() : FTransform::Identity;
+
   const auto HandleDetermineSkippedStates = [this, &OutSkippedStateIndices](int32 StartIdx, int32 TargetIdx)
   {
     if (bDetermineSkippedSmoothingStates && SimulationAux.PrevInterpTargetTime >= 0.)
@@ -4585,7 +4790,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
       const double LastTimestamp = MoveHistory[LastIdx].MetaData.Timestamp;
       SetInterpParams(LastIdx, LastTimestamp, false, IsUsingServerAuthPhysicsReplication());
 
-      SmoothNone(LastIdx, NoInterpStates, bSkipBoneUpdateForSmoothing, SmoothingContext);
+      SmoothNone(LastIdx, false, NoInterpStates, bSkipBoneUpdateForSmoothing, SmoothingContext);
 
       break;
     }
@@ -4602,6 +4807,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
           MatchLatest.PrevIdx,
           MatchLatest.Alpha,
           true,
+          false,
           MatchLatest.TeleportThreshold,
           MatchLatest.InterpStates,
           bSkipBoneUpdateForSmoothing,
@@ -4672,6 +4878,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
           UniformSimulation.MaxTimeStep,
           UniformSimulation.MaxIterations,
           true,
+          false,
           UniformSimulation.SimStates,
           bSkipBoneUpdateForSmoothing,
           SmoothingContext
@@ -4695,6 +4902,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
           CumulativeSimulation.MaxTimeStep,
           CumulativeSimulation.MaxIterations,
           true,
+          false,
           CumulativeSimulation.SimStates,
           bSkipBoneUpdateForSmoothing,
           SmoothingContext
@@ -4788,6 +4996,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
             MatchLatest.PrevIdx,
             MatchLatest.Alpha,
             false,
+            false,
             MatchLatest.TeleportThreshold,
             MatchLatest.InterpStates,
             bSkipBoneUpdateForSmoothing,
@@ -4844,6 +5053,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
             UniformSimulation.MaxTimeStep,
             UniformSimulation.MaxIterations,
             false,
+            false,
             UniformSimulation.SimStates,
             bSkipBoneUpdateForSmoothing,
             SmoothingContext
@@ -4865,6 +5075,7 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
             CumulativeSimulation.SimTime,
             CumulativeSimulation.MaxTimeStep,
             CumulativeSimulation.MaxIterations,
+            false,
             false,
             CumulativeSimulation.SimStates,
             bSkipBoneUpdateForSmoothing,
@@ -4954,6 +5165,12 @@ void UGMC_ReplicationCmp::SmoothMovement(float DeltaTime, double& OutSimTime, in
   )
 
   DEBUG_LOG_EXTRAPOLATION
+
+  if (bDidInterpolate || bDidInterpolate)
+  {
+    // Post-process smoothing of the configured component (if any).
+    SmoothComponent(OutSimTime, DeltaTime, PostSmoothComponentStartTransform, PawnOwner->GetActorTransform(), PostSmoothingParams);
+  }
 }
 
 bool UGMC_ReplicationCmp::ShouldSimulatePawn(double MaxSmoothingDistance, double SmoothingFallOffDistance, int32 MaxSkippedSmoothingFrames) const
@@ -5063,9 +5280,9 @@ void UGMC_ReplicationCmp::ComputeSmoothingParams(
       );
     }
 
-    // Set to the current server state for the first update.
     if (MatchLatest.SimTime == 0.)
     {
+      // Set to the current server state for the first update.
       MatchLatest.SimTime = MatchLatest.TargetStateTimestamp = LatestTimestamp;
       MatchLatest.TargetDelta = 0.f;
     }
@@ -5078,7 +5295,7 @@ void UGMC_ReplicationCmp::ComputeSmoothingParams(
         MatchLatest.InterpStates == EGMC_InterpolationStates::Input ? PrevMove.InputState : PrevMove.OutputState;
       ProcessSyncData_IntegratedOnly(MatchLatestParamsAux.SimulationStartState, {DataOp::Save}, AliasData, bUseRelativeValuesForSimulation, this);
 
-      // Slow down if the pawn is already ahead of the previous target state.
+      // Slow down if already ahead of the previous target.
       if (MatchLatest.SimTime > MatchLatest.TargetStateTimestamp)
       {
         MatchLatest.SimTime = FMath::LerpStable(MatchLatest.TargetStateTimestamp, MatchLatest.SimTime, 0.5);
@@ -5090,8 +5307,9 @@ void UGMC_ReplicationCmp::ComputeSmoothingParams(
       // Do not exceed the target and do not fall behind by more than Delta.
       const float MaxDelta = FMath::Min(MatchLatest.MaxDeltaTime, LatestTimestamp);
       const float MinDelta = FMath::Min(MatchLatest.MinDeltaTime, MaxDelta);
-      const float Delta = FMath::Clamp(ElapsedTime * MatchLatest.MAX_TIME_BEHIND_PERCENT, MinDelta, MaxDelta);
-      MatchLatest.SimTime = FMath::Clamp(MatchLatest.SimTime, LatestTimestamp - Delta, LatestTimestamp);
+      const float Delta = FMath::Clamp(ElapsedTime * MatchLatest.DeltaTimeDilation, MinDelta, MaxDelta);
+      const double MinSimTime = LatestTimestamp - Delta;
+      MatchLatest.SimTime = FMath::Clamp(MatchLatest.SimTime, MinSimTime, LatestTimestamp);
 
       // Determine the delta between the new target state and the current pawn simulation.
       MatchLatest.TargetDelta = LatestTimestamp - MatchLatest.SimTime;
@@ -5219,8 +5437,8 @@ void UGMC_ReplicationCmp::ComputeSmoothingParams(
       Params.TimeSinceLastNewMove = Params.bNewMove ? 0.f : Params.TimeSinceLastNewMove + DeltaTime;
 
       gmc_ck(IsValid(PawnOwner))
-      const float UpdateFrequency = IsRemotelyControlledServerPawn() ? ClientSendRate : PawnOwner->NetUpdateFrequency;
-      const float AvgTimeBetweenUpdates = 1.f / FMath::Clamp(UpdateFrequency, 0.000001f, UE_BIG_NUMBER);
+      const float UpdateFrequency = IsRemotelyControlledServerPawn() ? GetClientSendRate() : PawnOwner->NetUpdateFrequency;
+      const float AvgTimeBetweenUpdates = 1.f / FMath::Clamp(UpdateFrequency, UE_KINDA_SMALL_NUMBER, UE_BIG_NUMBER);
       Params.bInterpThisUpdate = bForceExtrap ? false : Params.TimeSinceLastNewMove <= AvgTimeBetweenUpdates + Params.InterpTolerance;
       Params.bExtrapThisUpdate = (uint8)!Params.bInterpThisUpdate;
 
@@ -5246,7 +5464,8 @@ void UGMC_ReplicationCmp::ComputeSmoothingParams(
 
       const double LatestTime = MoveHistory[UniformSimulation.LastIdx].MetaData.Timestamp;
 
-      UniformSimulation.SimDeltaTime = FMath::Clamp(GetTime() - LatestTime, (double)MIN_DELTA_TIME, UE_DOUBLE_BIG_NUMBER);
+      const double ClampedTimeDiscrepancy = FMath::Clamp(CL_GetTimeDiscrepancy(), -CLIENT_TIME_DISCREPANCY_CLAMP_ABS, CLIENT_TIME_DISCREPANCY_CLAMP_ABS);
+      UniformSimulation.SimDeltaTime = FMath::Clamp(GetTime() + ClampedTimeDiscrepancy - LatestTime, (double)MIN_DELTA_TIME, UE_DOUBLE_BIG_NUMBER);
 
       UniformSimulation.SimTime = LatestTime + UniformSimulation.SimDeltaTime;
 
@@ -5434,22 +5653,22 @@ void UGMC_ReplicationCmp::ApplyPawnState(const FGMC_PawnState& State)
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnSyncDataApplied, State, EGMC_NetContext::NoContextInformation);
 }
 
-bool UGMC_ReplicationCmp::AddToSimulationHistory(const FGMC_Move& Move)
+bool UGMC_ReplicationCmp::ShouldAddToSimulationHistory(double MoveTimestamp) const
+{
+  return MoveHistory.Num() == 0 || MoveTimestamp > MoveHistory.Last().MetaData.Timestamp;
+}
+
+void UGMC_ReplicationCmp::AddToSimulationHistory(const FGMC_Move& Move)
 {
   SCOPE_CYCLE_COUNTER(STAT_AddToSimulationHistory)
 
-  if (MoveHistory.Num() > 0 && Move.MetaData.Timestamp <= MoveHistory.Last().MetaData.Timestamp)
-  {
-    return false;
-  }
+  gmc_ck(ShouldAddToSimulationHistory(Move.MetaData.Timestamp))
 
   // If the history has already reached the max size the oldest move will be overwritten.
   MoveHistory.Add(Move);
   gmc_ck(MoveHistory.Num() <= MoveHistoryMaxSize)
 
   CALL_NATIVE_EVENT_CONDITIONAL(bNoBlueprintEvents, this, OnSimulationMoveEnqueued, MoveHistory.Last());
-
-  return true;
 }
 
 FGMC_PawnState& UGMC_ReplicationCmp::RollbackBuffer()
@@ -5628,18 +5847,9 @@ bool UGMC_ReplicationCmp::ShouldRollBackGMCPawn_Implementation(const AGMC_Pawn* 
 
   const auto& MoveHistoryOther = ReplicationComponent->MoveHistory;
   const int32 MoveHistoryNumOther = MoveHistoryOther.Num();
-  if (MoveHistoryNumOther == 0)
+  if (MoveHistoryNumOther < 2)
   {
-    // The considered pawn's move history is empty.
-    return false;
-  }
-
-  if (
-    ReplicationComponent->InterpolationMode != EGMC_InterpolationMode::FixedDelay &&
-    ReplicationComponent->InterpolationMode != EGMC_InterpolationMode::AdaptiveDelay
-  )
-  {
-    // Rollback does not work without a consistent simulation delay.
+    // The considered pawn's move history is not filled yet.
     return false;
   }
 
@@ -5708,21 +5918,7 @@ void UGMC_ReplicationCmp::RollBackPawns(double Time, const TArray<AGMC_Pawn*>& P
     const int32 MoveHistoryOtherNum = MoveHistoryOther.Num();
     gmc_ck(MoveHistoryOtherNum > 0)
 
-    double SimulationTime = Time;
-    bool bUsingFixedDelay{false};
-    if (ReplicationComponent->InterpolationMode == EGMC_InterpolationMode::FixedDelay)
-    {
-      // The delay must have the same fixed value as on client and server.
-      SimulationTime -= ReplicationComponent->FixedDelayParams.FixedDelay;
-      bUsingFixedDelay = true;
-    }
-    else
-    {
-      gmc_ck(ReplicationComponent->InterpolationMode == EGMC_InterpolationMode::AdaptiveDelay)
-
-      // When using an adaptive delay we must retrieve the simulation delay value that was used when the move was originally executed.
-      SimulationTime -= ReplicationComponent->GetAdaptiveDelayAt(Time, OwningConnection);
-    }
+    const double SimulationTime = ComputeRollbackSimulationTime(Time, OwningConnection, GMCPawn, ReplicationComponent);
 
     // Find the states that were used during the original move execution.
     int32 StartIdx{-1};
@@ -5747,20 +5943,7 @@ void UGMC_ReplicationCmp::RollBackPawns(double Time, const TArray<AGMC_Pawn*>& P
     gmc_ck(Alpha >= 0.f)
     gmc_ck(Alpha <= 1.f + UE_KINDA_SMALL_NUMBER)
 
-    const EGMC_InterpolationStates InterpStates = bUsingFixedDelay ? FixedDelayParams.InterpStates : AdaptiveDelayParams.InterpStates;
-    const float TeleportThreshold = bUsingFixedDelay ? FixedDelayParams.TeleportThreshold : AdaptiveDelayParams.TeleportThreshold;
-    ReplicationComponent->SmoothDelay(
-      StartIdx,
-      TargetIdx,
-      Alpha,
-      true,
-      true,
-      -1.f,
-      TeleportThreshold,
-      InterpStates,
-      bSkipBoneUpdateForRollback,
-      Context
-    );
+    SetRollbackState(Time, SimulationTime, StartIdx, TargetIdx, Alpha, ReplicationComponent, Context);
 
     // At this point the target pawn may already be rolled back to a different time if more than one client move is executed/replayed.
     if (IsServerPawn())
@@ -5780,6 +5963,78 @@ void UGMC_ReplicationCmp::RollBackPawns(double Time, const TArray<AGMC_Pawn*>& P
       ReplicationComponent->bNoBlueprintEvents, ReplicationComponent, OnPawnRolledBack, SimulationTime, StartIdx, TargetIdx, Context
     );
   }
+}
+
+double UGMC_ReplicationCmp::ComputeRollbackSimulationTime(
+  double Time,
+  APlayerController* const Connection,
+  AGMC_Pawn* const OtherPawn,
+  UGMC_ReplicationCmp* const OtherReplicationComponent
+) const
+{
+  gmc_ck(IsValid(Connection))
+  gmc_ck(IsValid(OtherPawn))
+  gmc_ck(IsValid(OtherReplicationComponent))
+  gmc_ck(OtherReplicationComponent ? OtherReplicationComponent->GetPawnOwner() == OtherPawn : false)
+
+  const bool bUsingFixedDelay = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::FixedDelay;
+  const bool bUsingAdaptiveDelay = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::AdaptiveDelay;
+
+  double SimulationTime = Time;
+
+  if (bUsingFixedDelay)
+  {
+    // The delay must have the same fixed value as on client and server.
+    SimulationTime -= OtherReplicationComponent->FixedDelayParams.FixedDelay;
+  }
+  else if (bUsingAdaptiveDelay)
+  {
+    // When using an adaptive delay we must retrieve the simulation delay value that was used when the move was originally executed.
+    SimulationTime -= OtherReplicationComponent->GetAdaptiveDelayAt(Time, Connection);
+  }
+  else
+  {
+    // All other simulation modes have to rely on the client's ping (which is less accurate).
+
+    {
+      if (const auto& OwningConnectionPlayerState = Connection->PlayerState)
+      {
+        // Consider the latency of the client that is executing the move.
+        SimulationTime -= OwningConnectionPlayerState->GetPingInMilliseconds() / 1000.f / 2.f;
+      }
+
+      // Also try to account for the net update frequency.
+      const float AvgNetUpdateDelay = 1.f / FMath::Max(OtherReplicationComponent->PawnOwner->NetUpdateFrequency, UE_KINDA_SMALL_NUMBER) / 2.f;
+      SimulationTime -= AvgNetUpdateDelay;
+
+      // Try to account for unknown processing times (server + receiving client).
+      constexpr float Bias = 0.005f;
+      SimulationTime -= Bias;
+    }
+
+    if (OtherReplicationComponent->IsRemotelyControlledServerPawn())
+    {
+      // Consider the ping of the client whose pawn is being rolled back.
+      if (const auto& OtherPlayerController = Cast<APlayerController>(OtherPawn->GetController()))
+      {
+        if (const auto& OtherPlayerState = OtherPlayerController->PlayerState)
+        {
+          // Consider the latency of the client that is being rolled back.
+          SimulationTime -= OtherPlayerState->GetPingInMilliseconds() / 1000.f / 2.f;
+        }
+      }
+
+      // Try to account for the send rate of the client that is being rolled back.
+      const float AvgSendDelay = 1.f / FMath::Max(OtherReplicationComponent->GetClientSendRate(), UE_KINDA_SMALL_NUMBER) / 2.f;
+      SimulationTime -= AvgSendDelay;
+
+      // Try to account for unknown processing times (server + sending client).
+      constexpr float Bias = 0.005f;
+      SimulationTime -= Bias;
+    }
+  }
+
+  return SimulationTime;
 }
 
 bool UGMC_ReplicationCmp::ComputeRollbackParams(
@@ -5888,7 +6143,7 @@ bool UGMC_ReplicationCmp::ComputeRollbackParams(
       gmc_ck(OutAlpha >= 0.f)
       gmc_ck(OutAlpha <= 1.f + UE_KINDA_SMALL_NUMBER)
 
-      return true;
+      break;
     }
   }
   else
@@ -5909,14 +6164,142 @@ bool UGMC_ReplicationCmp::ComputeRollbackParams(
       OutAlpha = (Time - StartTimestamp) / FMath::Max(TargetTimestamp - StartTimestamp, MIN_DELTA_TIME);
       gmc_ck(OutAlpha >= 0.f)
       gmc_ck(OutAlpha <= 1.f + UE_KINDA_SMALL_NUMBER)
-
-      return true;
     }
   }
 
-  gmc_ck(OutTargetIdx == -1)
-  gmc_ck(OutAlpha == -1.f)
-  return false;
+  if (OutTargetIdx == -1)
+  {
+    gmc_ck(OutAlpha == -1.f)
+    gmc_ck(OutStartIdx >= 0)
+
+    // If no target move was found, we use the same state as start and target.
+    OutTargetIdx = OutStartIdx;
+    OutAlpha = 1.f;
+  }
+
+  return true;
+}
+
+void UGMC_ReplicationCmp::SetRollbackState(
+  double Time,
+  double SimulationTime,
+  int32 StartIdx,
+  int32 TargetIdx,
+  float Alpha,
+  UGMC_ReplicationCmp* const OtherReplicationComponent,
+  EGMC_NetContext Context
+) const
+{
+  gmc_ck(IsValid(OtherReplicationComponent))
+  gmc_ck(OtherReplicationComponent ? OtherReplicationComponent->IsValidMoveHistoryIndex(StartIdx) : false)
+  gmc_ck(OtherReplicationComponent ? OtherReplicationComponent->IsValidMoveHistoryIndex(TargetIdx) : false)
+  gmc_ck(Alpha >= 0.f)
+  gmc_ck(Alpha <= 1.f + UE_KINDA_SMALL_NUMBER)
+
+  const bool bUsingNoSmoothing = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::None;
+  const bool bUsingMatchLatest = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::MatchLatest;
+  const bool bUsingFixedDelay = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::FixedDelay;
+  const bool bUsingAdaptiveDelay = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::AdaptiveDelay;
+  const bool bUsingUniformSimulation = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::UniformSimulation;
+  const bool bUsingCumulativeSimulation = OtherReplicationComponent->InterpolationMode == EGMC_InterpolationMode::CumulativeSimulation;
+  gmc_ck(bUsingNoSmoothing ^ bUsingMatchLatest ^ bUsingFixedDelay ^ bUsingAdaptiveDelay ^ bUsingUniformSimulation ^ bUsingCumulativeSimulation)
+
+  if (bUsingFixedDelay || bUsingAdaptiveDelay)
+  {
+    const auto& OtherFixedDelayParams = OtherReplicationComponent->FixedDelayParams;
+    const auto& OtherAdaptiveDelayParams = OtherReplicationComponent->AdaptiveDelayParams;
+
+    const float TeleportThreshold = bUsingFixedDelay ? OtherFixedDelayParams.TeleportThreshold : OtherAdaptiveDelayParams.TeleportThreshold;
+    const EGMC_InterpolationStates InterpStates = bUsingFixedDelay ? OtherFixedDelayParams.InterpStates : OtherAdaptiveDelayParams.InterpStates;
+
+    OtherReplicationComponent->SmoothDelay(
+      StartIdx,
+      TargetIdx,
+      Alpha,
+      true,
+      true,
+      -1.f,
+      TeleportThreshold,
+      InterpStates,
+      bSkipBoneUpdateForRollback,
+      Context
+    );
+  }
+  else if (bUsingNoSmoothing || bUsingMatchLatest)
+  {
+    const EGMC_InterpolationStates InterpStates =
+      bUsingNoSmoothing ? OtherReplicationComponent->NoInterpStates : OtherReplicationComponent->MatchLatestParams.InterpStates;
+
+    const double StartTimestamp = OtherReplicationComponent->MoveHistory[StartIdx].MetaData.Timestamp;
+    const double TargetTimestamp = OtherReplicationComponent->MoveHistory[TargetIdx].MetaData.Timestamp;
+    const double StartStateTimeDiff = FMath::Abs(SimulationTime - StartTimestamp);
+    const double TargetStateTimeDiff = FMath::Abs(SimulationTime - TargetTimestamp);
+    const int32 RollbackIdx = StartStateTimeDiff < TargetStateTimeDiff ? StartIdx : TargetIdx;
+
+    // Setting the target state directly is the best approximation we can do for these smoothing modes.
+    OtherReplicationComponent->SmoothNone(
+      RollbackIdx,
+      true,
+      InterpStates,
+      bSkipBoneUpdateForRollback,
+      Context
+    );
+  }
+  else
+  {
+    gmc_ck(bUsingUniformSimulation || bUsingCumulativeSimulation)
+
+    const auto& OtherUniformSimulationParams = OtherReplicationComponent->UniformSimulationParams;
+    const auto& OtherCumulativeSimulationParams = OtherReplicationComponent->CumulativeSimulationParams;
+
+    const float MaxSimulationTimeStep =
+      bUsingUniformSimulation ? OtherUniformSimulationParams.MaxTimeStep : OtherCumulativeSimulationParams.MaxTimeStep;
+    const int32 MaxSimulationIterations =
+      bUsingUniformSimulation ? OtherUniformSimulationParams.MaxIterations : OtherCumulativeSimulationParams.MaxIterations;
+    const EGMC_InterpolationStates SimulationStates =
+      bUsingUniformSimulation ? OtherUniformSimulationParams.SimStates : OtherCumulativeSimulationParams.SimStates;
+
+    const double StartTimestamp = OtherReplicationComponent->MoveHistory[StartIdx].MetaData.Timestamp;
+    const double TargetTimestamp = OtherReplicationComponent->MoveHistory[TargetIdx].MetaData.Timestamp;
+
+    const double StartStateTimeDiff = FMath::Abs(SimulationTime - StartTimestamp);
+    const double TargetStateTimeDiff = FMath::Abs(SimulationTime - TargetTimestamp);
+    const int32 RollbackIdx = StartStateTimeDiff < TargetStateTimeDiff ? StartIdx : TargetIdx;
+
+    const float DeltaTime = (bUsingUniformSimulation ? Time : SimulationTime) - OtherReplicationComponent->MoveHistory[RollbackIdx].MetaData.Timestamp;
+
+    constexpr float DeltaTimeThreshold = 0.01f;
+    if (DeltaTime <= DeltaTimeThreshold)
+    {
+      // Save the simulation if we are very close to the target state anyway or the delta time is negative.
+      OtherReplicationComponent->SmoothNone(
+        RollbackIdx,
+        true,
+        SimulationStates,
+        bSkipBoneUpdateForRollback,
+        Context
+      );
+    }
+    else
+    {
+      // We do not execute multiple iterations for cumulative simulation here. Instead, we simply treat the delta time value calculated from the simulation time
+      // as "uniform" as well. Any integration error caused by this is insignificant compared to how inaccurate guessing the simulation time based on ping
+      // already is.
+      OtherReplicationComponent->SmoothSimulated(
+        RollbackIdx,
+        false,
+        DeltaTime,
+        Time,
+        MaxSimulationTimeStep,
+        MaxSimulationIterations,
+        true,
+        true,
+        SimulationStates,
+        bSkipBoneUpdateForRollback,
+        Context
+      );
+    }
+  }
 }
 
 void UGMC_ReplicationCmp::RestoreRolledBackPawns(const TArray<AGMC_Pawn*>& PawnsToRestore, EGMC_NetContext Context) const
@@ -6076,20 +6459,6 @@ bool UGMC_ReplicationCmp::SV_GetRewindParams(
     return false;
   }
 
-  if (
-    PawnReplicationComponent->InterpolationMode != EGMC_InterpolationMode::FixedDelay &&
-    PawnReplicationComponent->InterpolationMode != EGMC_InterpolationMode::AdaptiveDelay
-  )
-  {
-    GMC_LOG(
-      LogGMCReplication,
-      PawnOwner,
-      Warning,
-      TEXT("GetRewindParams failed: the target pawn's configured interpolation mode does not support rewind.")
-    )
-    return false;
-  }
-
   const auto& PawnMoveHistory = PawnReplicationComponent->MoveHistory;
   if (PawnMoveHistory.Num() == 0)
   {
@@ -6097,17 +6466,7 @@ bool UGMC_ReplicationCmp::SV_GetRewindParams(
     return false;
   }
 
-  float SimulationTime = Time;
-  if (PawnReplicationComponent->InterpolationMode == EGMC_InterpolationMode::FixedDelay)
-  {
-    SimulationTime -= PawnReplicationComponent->FixedDelayParams.FixedDelay;
-  }
-  else
-  {
-    gmc_ck(PawnReplicationComponent->InterpolationMode == EGMC_InterpolationMode::AdaptiveDelay)
-
-    SimulationTime -= PawnReplicationComponent->GetAdaptiveDelayAt(Time, Connection);
-  }
+  const double SimulationTime = ComputeRollbackSimulationTime(Time, Connection, Pawn, PawnReplicationComponent);
 
   if (!ComputeRollbackParams(Connection, SimulationTime, PawnMoveHistory, OutStartIdx, OutTargetIdx, OutAlpha))
   {
@@ -6163,21 +6522,6 @@ bool UGMC_ReplicationCmp::SV_RewindPawn(APlayerController* Connection, double Ti
     return false;
   }
 
-  if (
-    PawnReplicationComponent->InterpolationMode != EGMC_InterpolationMode::FixedDelay &&
-    PawnReplicationComponent->InterpolationMode != EGMC_InterpolationMode::AdaptiveDelay
-  )
-  {
-    // We need to have a consistent simulation delay to find the correct history entries.
-    GMC_LOG(
-      LogGMCReplication,
-      PawnOwner,
-      Warning,
-      TEXT("Rewind failed: the target pawn's configured interpolation mode does not support rewind.")
-    )
-    return false;
-  }
-
   const auto& PawnMoveHistory = PawnReplicationComponent->MoveHistory;
   if (PawnMoveHistory.Num() == 0)
   {
@@ -6185,23 +6529,8 @@ bool UGMC_ReplicationCmp::SV_RewindPawn(APlayerController* Connection, double Ti
     return false;
   }
 
-  float SimulationTime = Time;
-  bool bUsingFixedDelay{false};
-  if (PawnReplicationComponent->InterpolationMode == EGMC_InterpolationMode::FixedDelay)
-  {
-    // The delay must have the same fixed value as on client and server.
-    SimulationTime -= PawnReplicationComponent->FixedDelayParams.FixedDelay;
-    bUsingFixedDelay = true;
-  }
-  else
-  {
-    gmc_ck(PawnReplicationComponent->InterpolationMode == EGMC_InterpolationMode::AdaptiveDelay)
+  const double SimulationTime = ComputeRollbackSimulationTime(Time, Connection, Pawn, PawnReplicationComponent);
 
-    // When using an adaptive delay we must retrieve the simulation delay value that was used when the move was originally executed.
-    SimulationTime -= PawnReplicationComponent->GetAdaptiveDelayAt(Time, Connection);
-  }
-
-  // Find the states that were used during the original move execution.
   int32 StartIdx{-1};
   int32 TargetIdx{-1};
   float Alpha{-1.f};
@@ -6218,20 +6547,7 @@ bool UGMC_ReplicationCmp::SV_RewindPawn(APlayerController* Connection, double Ti
 
   SaveLocalStateBeforeRollback(Pawn, false);
 
-  const EGMC_InterpolationStates InterpStates = bUsingFixedDelay ? FixedDelayParams.InterpStates : AdaptiveDelayParams.InterpStates;
-  const float TeleportThreshold = bUsingFixedDelay ? FixedDelayParams.TeleportThreshold : AdaptiveDelayParams.TeleportThreshold;
-  PawnReplicationComponent->SmoothDelay(
-    StartIdx,
-    TargetIdx,
-    Alpha,
-    true,
-    true,
-    -1.f,
-    TeleportThreshold,
-    InterpStates,
-    bSkipBoneUpdate,
-    EGMC_NetContext::ManualRewind
-  );
+  SetRollbackState(Time, SimulationTime, StartIdx, TargetIdx, Alpha, PawnReplicationComponent, EGMC_NetContext::ManualRewind);
 
   gmc_ck(!PawnReplicationComponent->SV_RemoteMoveExecutionAux.bIsRolledBack)
   PawnReplicationComponent->SV_RemoteMoveExecutionAux.bIsRolledBack = true;
@@ -6536,6 +6852,194 @@ bool UGMC_ReplicationCmp::IsPerformingExtrapolationRecovery() const
   return SimulationAux.ExtrapolationRecoveryTimer >= 0.f;
 }
 
+void UGMC_ReplicationCmp::SetComponentToSmooth(USceneComponent* Component)
+{
+  const auto& Owner = GetOwner();
+  if (IsValid(Component) && IsValid(Owner) && Owner == Component->GetOwner())
+  {
+    PostSmoothingParams.Component = Component;
+    PostSmoothingParams.ComponentOffset = Component->GetComponentTransform().GetRelativeTransform(Owner->GetActorTransform());
+  }
+  else
+  {
+    PostSmoothingParams.Component = nullptr;
+    PostSmoothingParams.Reset();
+  }
+}
+
+USceneComponent* UGMC_ReplicationCmp::GetComponentToSmooth() const
+{
+  return PostSmoothingParams.Component;
+}
+
+FTransform UGMC_ReplicationCmp::GetComponentToSmoothOffset() const
+{
+  return PostSmoothingParams.Component ? PostSmoothingParams.ComponentOffset : FTransform::Identity;
+}
+
+void UGMC_ReplicationCmp::SetComponentWorldTransformWithSmoothOffset(
+  const FTransform& ComponentWorldTransform,
+  bool bSweep,
+  FHitResult& OutSweepHitResult,
+  bool bTeleportPhysics,
+  USceneComponent* SmoothComponent,
+  const FTransform& SmoothOffset
+)
+{
+  if (!IsValid(SmoothComponent))
+  {
+    return;
+  }
+
+  SmoothComponent->K2_SetWorldTransform(ComponentWorldTransform, bSweep, OutSweepHitResult, bTeleportPhysics);
+
+  if (!IsSimulatedPawn())
+  {
+    return;
+  }
+
+  const auto& Owner = Cast<AGMC_Pawn>(SmoothComponent->GetOwner());
+  if (!IsValid(Owner))
+  {
+    return;
+  }
+
+  const auto& ReplicationComponent = Owner->GetReplicationComponent();
+  if (!IsValid(ReplicationComponent))
+  {
+    return;
+  }
+
+  auto& SmoothingParams = ReplicationComponent->PostSmoothingParams;
+  if (SmoothingParams.Component != SmoothComponent)
+  {
+    return;
+  }
+
+  SmoothingParams.ComponentOffset = SmoothOffset;
+}
+
+void UGMC_ReplicationCmp::SetComponentWorldLocationWithSmoothOffset(
+  const FVector& ComponentWorldLocation,
+  bool bSweep,
+  FHitResult& OutSweepHitResult,
+  bool bTeleportPhysics,
+  USceneComponent* SmoothComponent,
+  const FVector& SmoothOffset
+)
+{
+  if (!IsValid(SmoothComponent))
+  {
+    return;
+  }
+
+  SmoothComponent->K2_SetWorldLocation(ComponentWorldLocation, bSweep, OutSweepHitResult, bTeleportPhysics);
+
+  if (!IsSimulatedPawn())
+  {
+    return;
+  }
+
+  const auto& Owner = Cast<AGMC_Pawn>(SmoothComponent->GetOwner());
+  if (!IsValid(Owner))
+  {
+    return;
+  }
+
+  const auto& ReplicationComponent = Owner->GetReplicationComponent();
+  if (!IsValid(ReplicationComponent))
+  {
+    return;
+  }
+
+  auto& SmoothingParams = ReplicationComponent->PostSmoothingParams;
+  if (SmoothingParams.Component != SmoothComponent)
+  {
+    return;
+  }
+
+  SmoothingParams.ComponentOffset.SetLocation(SmoothOffset);
+}
+
+void UGMC_ReplicationCmp::SetComponentWorldRotationWithSmoothOffset(
+  const FRotator& ComponentWorldRotation,
+  bool bTeleportPhysics,
+  USceneComponent* SmoothComponent,
+  const FRotator& SmoothOffset
+)
+{
+  if (!IsValid(SmoothComponent))
+  {
+    return;
+  }
+
+  SmoothComponent->K2_SetWorldRotation(ComponentWorldRotation, false, UNUSED(FHitResult), bTeleportPhysics);
+
+  if (!IsSimulatedPawn())
+  {
+    return;
+  }
+
+  const auto& Owner = Cast<AGMC_Pawn>(SmoothComponent->GetOwner());
+  if (!IsValid(Owner))
+  {
+    return;
+  }
+
+  const auto& ReplicationComponent = Owner->GetReplicationComponent();
+  if (!IsValid(ReplicationComponent))
+  {
+    return;
+  }
+
+  auto& SmoothingParams = ReplicationComponent->PostSmoothingParams;
+  if (SmoothingParams.Component != SmoothComponent)
+  {
+    return;
+  }
+
+  SmoothingParams.ComponentOffset.SetRotation(SmoothOffset.Quaternion());
+}
+
+void UGMC_ReplicationCmp::SetComponentWorldScaleWithSmoothOffset(
+  const FVector& ComponentWorldScale,
+  USceneComponent* SmoothComponent,
+  const FVector& SmoothOffset
+)
+{
+  if (!IsValid(SmoothComponent))
+  {
+    return;
+  }
+
+  SmoothComponent->SetWorldScale3D(ComponentWorldScale);
+
+  if (!IsSimulatedPawn())
+  {
+    return;
+  }
+
+  const auto& Owner = Cast<AGMC_Pawn>(SmoothComponent->GetOwner());
+  if (!IsValid(Owner))
+  {
+    return;
+  }
+
+  const auto& ReplicationComponent = Owner->GetReplicationComponent();
+  if (!IsValid(ReplicationComponent))
+  {
+    return;
+  }
+
+  auto& SmoothingParams = ReplicationComponent->PostSmoothingParams;
+  if (SmoothingParams.Component != SmoothComponent)
+  {
+    return;
+  }
+
+  SmoothingParams.ComponentOffset.SetScale3D(SmoothOffset);
+}
+
 void UGMC_ReplicationCmp::CL_DoNotCombineNextMove()
 {
   if (IsAutonomousProxy() && !CL_IsReplaying())
@@ -6695,14 +7199,14 @@ FVector UGMC_ReplicationCmp::GetAngularVelocity_GMC() const
   return AngularVelocity;
 }
 
-void UGMC_ReplicationCmp::SetActorLocation_GMC(const FVector& Location)
+void UGMC_ReplicationCmp::SetActorLocation_GMC(const FVector& Location, bool bTeleportPhysics)
 {
   if (!IsValid(PawnOwner))
   {
     return;
   }
 
-  PawnOwner->SetActorLocation(Location, false, nullptr, ETeleportType::TeleportPhysics);
+  PawnOwner->SetActorLocation(Location, false, nullptr, bTeleportPhysics ? ETeleportType::TeleportPhysics : ETeleportType::None);
 }
 
 FVector UGMC_ReplicationCmp::GetActorLocation_GMC() const
@@ -6715,14 +7219,14 @@ FVector UGMC_ReplicationCmp::GetActorLocation_GMC() const
   return PawnOwner->GetActorLocation();
 }
 
-void UGMC_ReplicationCmp::SetActorRotation_GMC(const FRotator& Rotation)
+void UGMC_ReplicationCmp::SetActorRotation_GMC(const FRotator& Rotation, bool bTeleportPhysics)
 {
   if (!IsValid(PawnOwner))
   {
     return;
   }
 
-  PawnOwner->SetActorRotation(Rotation, ETeleportType::TeleportPhysics);
+  PawnOwner->SetActorRotation(Rotation, bTeleportPhysics ? ETeleportType::TeleportPhysics : ETeleportType::None);
 }
 
 FRotator UGMC_ReplicationCmp::GetActorRotation_GMC() const
@@ -6735,14 +7239,14 @@ FRotator UGMC_ReplicationCmp::GetActorRotation_GMC() const
   return PawnOwner->GetActorRotation();
 }
 
-void UGMC_ReplicationCmp::SetActorQuat_GMC(const FQuat& Rotation)
+void UGMC_ReplicationCmp::SetActorQuat_GMC(const FQuat& Rotation, bool bTeleportPhysics)
 {
   if (!IsValid(PawnOwner))
   {
     return;
   }
 
-  PawnOwner->SetActorRotation(Rotation, ETeleportType::TeleportPhysics);
+  PawnOwner->SetActorRotation(Rotation, bTeleportPhysics ? ETeleportType::TeleportPhysics : ETeleportType::None);
 }
 
 FQuat UGMC_ReplicationCmp::GetActorQuat_GMC() const
@@ -6755,24 +7259,24 @@ FQuat UGMC_ReplicationCmp::GetActorQuat_GMC() const
   return PawnOwner->GetActorQuat();
 }
 
-void UGMC_ReplicationCmp::SetActorLocationAndRotation_GMC(const FVector& Location, const FRotator& Rotation)
+void UGMC_ReplicationCmp::SetActorLocationAndRotation_GMC(const FVector& Location, const FRotator& Rotation, bool bTeleportPhysics)
 {
   if (!IsValid(PawnOwner))
   {
     return;
   }
 
-  PawnOwner->SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+  PawnOwner->SetActorLocationAndRotation(Location, Rotation, false, nullptr, bTeleportPhysics ? ETeleportType::TeleportPhysics : ETeleportType::None);
 }
 
-void UGMC_ReplicationCmp::SetActorLocationAndQuat_GMC(const FVector& Location, const FQuat& Rotation)
+void UGMC_ReplicationCmp::SetActorLocationAndQuat_GMC(const FVector& Location, const FQuat& Rotation, bool bTeleportPhysics)
 {
   if (!IsValid(PawnOwner))
   {
     return;
   }
 
-  PawnOwner->SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+  PawnOwner->SetActorLocationAndRotation(Location, Rotation, false, nullptr, bTeleportPhysics ? ETeleportType::TeleportPhysics : ETeleportType::None);
 }
 
 void UGMC_ReplicationCmp::SetActorScale_GMC(const FVector& Scale)
@@ -6795,14 +7299,14 @@ FVector UGMC_ReplicationCmp::GetActorScale_GMC() const
   return PawnOwner->GetActorScale3D();
 }
 
-void UGMC_ReplicationCmp::SetActorTransform_GMC(const FTransform& Transform)
+void UGMC_ReplicationCmp::SetActorTransform_GMC(const FTransform& Transform, bool bTeleportPhysics)
 {
   if (!IsValid(PawnOwner))
   {
     return;
   }
 
-  PawnOwner->SetActorTransform(Transform);
+  PawnOwner->SetActorTransform(Transform, false, nullptr, bTeleportPhysics ? ETeleportType::TeleportPhysics : ETeleportType::None);
 }
 
 FTransform UGMC_ReplicationCmp::GetActorTransform_GMC() const
@@ -6929,11 +7433,11 @@ void UGMC_ReplicationCmp::SetBasedActorLocation(const FVector& RelativeActorLoca
 {
   if (!IsValid(ActorBase))
   {
-    SetActorLocation_GMC(RelativeActorLocation);
+    SetActorLocation_GMC(RelativeActorLocation, true);
     return;
   }
 
-  SetActorLocation_GMC(GetWorldActorLocationFor(RelativeActorLocation, ActorBase->GetComponentTransform()));
+  SetActorLocation_GMC(GetWorldActorLocationFor(RelativeActorLocation, ActorBase->GetComponentTransform()), true);
 }
 
 FVector UGMC_ReplicationCmp::GetWorldActorLocationFor(const FVector& InRelativeActorLocation, const FTransform& InBaseTransform) const
@@ -6962,11 +7466,11 @@ void UGMC_ReplicationCmp::SetBasedActorRotation(const FRotator& RelativeActorRot
 {
   if (!IsValid(ActorBase))
   {
-    SetActorRotation_GMC(RelativeActorRotation);
+    SetActorRotation_GMC(RelativeActorRotation, true);
     return;
   }
 
-  SetActorRotation_GMC(GetWorldActorRotationFor(RelativeActorRotation, ActorBase->GetComponentTransform()));
+  SetActorRotation_GMC(GetWorldActorRotationFor(RelativeActorRotation, ActorBase->GetComponentTransform()), true);
 }
 
 FRotator UGMC_ReplicationCmp::GetWorldActorRotationFor(const FRotator& InRelativeActorRotation, const FTransform& InBaseTransform) const
@@ -7144,6 +7648,11 @@ void UGMC_ReplicationCmp::EnableClientPrediction(bool bEnable)
 
     ClearTransientData(true);
   }
+}
+
+bool UGMC_ReplicationCmp::IsUsingUnreliableClientMoves() const
+{
+  return ComponentStatus.bUseUnreliableClientMoves;
 }
 
 bool UGMC_ReplicationCmp::IsGMCEnabled() const
@@ -7326,6 +7835,24 @@ double UGMC_ReplicationCmp::GetTime() const
     return World->GetRealTimeSeconds();
   }
   GMC_LOG(LogGMCReplication, PawnOwner, Warning, TEXT("Server world time could not be retrieved."))
+  return 0.;
+}
+
+double UGMC_ReplicationCmp::CL_GetTimeDiscrepancy() const
+{
+  if (IsClientPawn())
+  {
+    if (UGameInstance* GameInstance = PawnOwner->GetGameInstance())
+    {
+      const auto& LocalController = Cast<AGMC_PlayerController>(GameInstance->GetFirstLocalPlayerController());
+      if (LocalController)
+      {
+        return LocalController->CL_GetAverageTimeDiscrepancy();
+      }
+    }
+    GMC_LOG(LogGMCReplication, PawnOwner, Warning, TEXT("Client was unable to retrieve the average time discrepancy."))
+    return 0.;
+  }
   return 0.;
 }
 
@@ -7830,8 +8357,17 @@ void FGMC_Move::NetSerializeClientMove(FArchive& Ar, UPackageMap* Map, const AAc
     MetaData.DeltaTime = FMath::Clamp(MetaData.DeltaTime, UGMC_ReplicationCmp::MIN_DELTA_TIME, NetInfo.OwningComponent->MaxMoveDeltaTime);
   }
 
-  // Reserialization is not needed for autonomous proxy moves since the data is sent to the server via reliable RPCs.
-  const bool bForceFullSerialization = false;
+  // Reserialization is only needed for autonomous proxy moves if the data is sent to the server via unreliable RPCs.
+  bool bForceFullSerialization = NetInfo.OwningComponent->ComponentStatus.bUseUnreliableClientMoves;
+
+  bool& JustDeactivatedUnreliableClientMoves = NetInfo.OwningComponent->ComponentStatus.CL_bJustDeactivatedUnreliableClientMoves;
+  if (JustDeactivatedUnreliableClientMoves)
+  {
+    // When we just switched to reliable client moves again, we need to force full reserialization for the first reliable RPCs because there's no guarantee the
+    // last unreliable RPC was actually received by the server.
+    bForceFullSerialization = true;
+    JustDeactivatedUnreliableClientMoves = false;
+  }
 
   NetSerializeSyncData(
     InputState,
@@ -8260,6 +8796,74 @@ void UGMC_ReplicationCmp::FComponentStatus::SaveFrameInfo(bool bDidUpdate, const
   }
 }
 
+void UGMC_ReplicationCmp::FComponentStatus::CL_SetUseUnreliableClientMoves(int32 NumPendingReliablePackets, UGMC_ReplicationCmp* const Outer)
+{
+  if (Outer->GetElapsedTimeSinceSpawn() < UNRELIABLE_CLIENT_MOVES_SPAWN_TOLERANCE)
+  {
+    gmc_ck(!bUseUnreliableClientMoves)
+    return;
+  }
+
+  const double Time = Outer->GetTime();
+  const int32 MaxNumPendingReliablePackets = Outer->UseUnreliableClientMovesThreshold;
+
+  if (MaxNumPendingReliablePackets < 0 || NumPendingReliablePackets > MaxNumPendingReliablePackets)
+  {
+    const bool bJustActivatedUnreliableClientMoves = !bUseUnreliableClientMoves;
+
+    bUseUnreliableClientMoves = true;
+    CL_UseUnreliableClientMovesActivationTime = Time;
+
+    if (bJustActivatedUnreliableClientMoves)
+    {
+      gmc_ck(IsValid(Outer->GetGMCPawnOwner()))
+      Outer->GetGMCPawnOwner()->SV_ReceiveClientSendStatus(bUseUnreliableClientMoves);
+
+      GMC_LOG(LogGMCReplication, Outer->GetPawnOwner(), Verbose, TEXT("Unreliable client move transmission enabled."))
+      CALL_NATIVE_EVENT_CONDITIONAL(Outer->bNoBlueprintEvents, Outer, OnUnreliableClientMovesActivated);
+    }
+
+    return;
+  }
+
+  if (!bUseUnreliableClientMoves)
+  {
+    gmc_ck(CL_UseUnreliableClientMovesActivationTime == 0.)
+    return;
+  }
+
+  const double TimeDiff = Time - CL_UseUnreliableClientMovesActivationTime;
+
+  if (TimeDiff <= 0.)
+  {
+    // There's probably some temporary sync inaccuracy with the client time, just update the activation time and wait until the next frame to check again.
+    CL_UseUnreliableClientMovesActivationTime = Time;
+    return;
+  }
+
+  if (TimeDiff > USE_UNRELIABLE_CLIENT_MOVES_TIMEOUT)
+  {
+    gmc_ck(bUseUnreliableClientMoves)
+    bUseUnreliableClientMoves = false;
+    CL_UseUnreliableClientMovesActivationTime = 0.;
+
+    // Should have been reset during net serialization.
+    gmc_ck(!CL_bJustDeactivatedUnreliableClientMoves)
+    CL_bJustDeactivatedUnreliableClientMoves = true;
+
+    if (CL_bJustDeactivatedUnreliableClientMoves)
+    {
+      gmc_ck(IsValid(Outer->GetGMCPawnOwner()))
+      Outer->GetGMCPawnOwner()->SV_ReceiveClientSendStatus(bUseUnreliableClientMoves);
+
+      GMC_LOG(LogGMCReplication, Outer->GetPawnOwner(), Verbose, TEXT("Unreliable client move transmission disabled."))
+      CALL_NATIVE_EVENT_CONDITIONAL(Outer->bNoBlueprintEvents, Outer, OnUnreliableClientMovesDeactivated);
+    }
+
+    return;
+  }
+}
+
 bool UGMC_ReplicationCmp::FComponentStatus::ShouldClearTransientData(const UGMC_ReplicationCmp* const Outer) const
 {
   gmc_ck(IsValid(Outer->PawnOwner))
@@ -8609,8 +9213,8 @@ void UGMC_ReplicationCmp::FSmoothClientCorrection::SwapTransform(UGMC_Replicatio
   const FVector SwapActorScale = Outer->GetActorScale_GMC();
   const FRotator SwapControlRotation = Outer->GetControllerRotation_GMC();
 
-  Outer->SetActorLocation_GMC(Buffer.SwapTransform.Location);
-  Outer->SetActorRotation_GMC(Buffer.SwapTransform.Rotation);
+  Outer->SetActorLocation_GMC(Buffer.SwapTransform.Location, true);
+  Outer->SetActorRotation_GMC(Buffer.SwapTransform.Rotation, true);
   Outer->SetActorScale_GMC(Buffer.SwapTransform.Scale);
   Outer->SetControllerRotation_GMC(Buffer.SwapTransform.ControlRotation);
 

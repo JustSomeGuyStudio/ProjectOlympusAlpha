@@ -180,7 +180,7 @@ enum class EGMC_PredictionMode : uint8
   ClientAuth_Output UMETA(DisplayName = "ClientAuth Output", ToolTip = "Client authoritative output value, the server will accept the client value without question."),
   ClientAuth_Input UMETA(DisplayName = "ClientAuth Input", ToolTip = "Client authoritative input value, the server will accept the client value without question."),
   ClientAuth_InputOutput UMETA(DisplayName = "ClientAuth InputOutput", ToolTip = "Client authoritative input and output values, the server will accept the client values without question."),
-  None UMETA(DisplayName = "None", ToolTip = "No network synchronisation."),
+  Local UMETA(DisplayName = "Local", ToolTip = "No network synchronisation."),
 };
 
 UENUM()
@@ -484,7 +484,7 @@ inline void SetPredictionMode(EGMC_PredictionMode Mode, GMCReplication::FSyncSet
       Settings.ClientSettings.OutputState.bSendToServer = true;
       break;
     }
-    case EGMC_PredictionMode::None:
+    case EGMC_PredictionMode::Local:
     {
       break;
     }

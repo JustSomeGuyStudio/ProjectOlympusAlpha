@@ -183,7 +183,7 @@ void UGMC_GoldSrcMovementCmp::BindReplicationData_Implementation()
 
   BI_JustJumped = BindBool(
     bJustJumped,
-    EGMC_PredictionMode::None,
+    EGMC_PredictionMode::Local,
     EGMC_CombineMode::AlwaysCombine,
     EGMC_SimulationMode::PeriodicAndOnChange_Output,
     EGMC_InterpolationFunction::NearestNeighbour
@@ -191,7 +191,7 @@ void UGMC_GoldSrcMovementCmp::BindReplicationData_Implementation()
 
   BI_JustLanded = BindBool(
     bJustLanded,
-    EGMC_PredictionMode::None,
+    EGMC_PredictionMode::Local,
     EGMC_CombineMode::AlwaysCombine,
     EGMC_SimulationMode::PeriodicAndOnChange_Output,
     EGMC_InterpolationFunction::NearestNeighbour
@@ -577,8 +577,9 @@ void UGMC_GoldSrcMovementCmp::ApplyJumpSpeedBoost_Implementation(float DeltaSeco
   const bool bApplyLargeSpeedBoost = !IsSprinting() && !IsFullyCrouched();
   const float SpeedBoost = bApplyLargeSpeedBoost ? LargeJumpSpeedBoostFactor : SmallJumpSpeedBoostFactor;
   const float ForwardMove = GetRawInputVector().X;
-  float SpeedAddition = FMath::Abs(ForwardMove) * MaxSpeed * SpeedBoost;
-  const float MaxSpeedBoosted = MaxSpeed + SpeedAddition;
+  const float CurrentMaxSpeed = GetMaxSpeed();
+  float SpeedAddition = FMath::Abs(ForwardMove) * CurrentMaxSpeed * SpeedBoost;
+  const float MaxSpeedBoosted = CurrentMaxSpeed + SpeedAddition;
   const float NewSpeed = Velocity.Size2D() + SpeedAddition;
   gmc_ck(NewSpeed >= 0.f)
 
@@ -854,7 +855,7 @@ void UGMC_GoldSrcMovementCmp::ApplyInputVelocity(const FGMC_RootMotionVelocitySe
   }
 
   const FVector WishMove = GetProcessedInputVector();
-  FVector WishVelocity = WishMove * MaxSpeed;
+  FVector WishVelocity = WishMove * GetMaxSpeed();
 
   // Enforce min walk speed if moving.
   if (WishVelocity.SizeSquared() > 0.)
@@ -885,10 +886,11 @@ void UGMC_GoldSrcMovementCmp::PhysicsGoldSrc(const FVector& WishMove, FVector Wi
 
   const FVector WishDirection = WishVelocity.GetSafeNormal();
   float WishSpeed = WishVelocity.Size();
-  if (WishSpeed > MaxSpeed)
+  const float CurrentMaxSpeed = GetMaxSpeed();
+  if (WishSpeed > CurrentMaxSpeed)
   {
-    WishVelocity *= MaxSpeed / WishSpeed;
-    WishSpeed = MaxSpeed;
+    WishVelocity *= CurrentMaxSpeed / WishSpeed;
+    WishSpeed = CurrentMaxSpeed;
   }
 
   if (bIsUsingCheatModes)
@@ -925,7 +927,7 @@ void UGMC_GoldSrcMovementCmp::WalkMove(FVector WishDirection, float WishSpeed, f
 
 void UGMC_GoldSrcMovementCmp::AirMove(FVector WishDirection, float WishSpeed, float DeltaSeconds)
 {
-  WishSpeed = FMath::Clamp(WishSpeed, 0.f, MaxSpeed * AirControl);
+  WishSpeed = FMath::Clamp(WishSpeed, 0.f, GetMaxSpeed() * AirControl);
   Accelerate(WishDirection, WishSpeed, Velocity | WishDirection, DeltaSeconds);
 }
 

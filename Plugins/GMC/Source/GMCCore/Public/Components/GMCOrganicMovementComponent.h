@@ -71,8 +71,6 @@ inline FString GetMovementModeAsString(uint8 MovementMode)
     default:
       return TEXT("");
   }
-  gmc_ckne()
-  return "";
 }
 
 UENUM(BlueprintType)
@@ -688,7 +686,7 @@ protected:
   void CL_PostReplay_Implementation() override;
   void GenPredictionTick_Implementation(float DeltaTime) override;
   void GenSimulationTick_Implementation(float DeltaTime) override;
-  void PreSmoothing_Implementation(int32 TargetIndex, bool bExtrapolating, EGMC_InterpolationStates InterpStates) override;
+  void PreSmoothing_Implementation(int32 TargetIndex, bool bExtrapolating, bool bRollback, EGMC_InterpolationStates InterpStates) override;
   void OnSyncDataApplied_Implementation(const FGMC_PawnState& State, EGMC_NetContext Context) override;
 
   /// Prevent changes of the Z velocity.
@@ -2363,6 +2361,10 @@ public:
   /// If false, grounded movement will be disabled when there's no gravity acting on the pawn.
   bool bGroundingWithoutGravity{false};
 
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
+  /// If true, safe rotations will be used during the internal movement physics. Only relevant when a flat capsule or box is used as root collision.
+  bool bUseSafeRotations{false};
+
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay, meta = (ClampMin = "0", UIMin = "10"))
   /// How far downwards the trace should go when updating the floor.
   float FloorTraceLength{500.f};
@@ -2378,6 +2380,10 @@ public:
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay, meta = (ClampMin = "0", UIMin = "0"))
   /// Max distance allowed for depenetration when moving out of other pawns.
   float MaxDepenetrationWithPawn{100.f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
+  /// If true, the skeletal mesh will be smoothed after simulation.
+  bool bSmoothMesh{true};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement", AdvancedDisplay)
   /// If true, the pose of the skeletal mesh will never be ticked for kinematic movement on a dedicated server. This is different from merely setting the

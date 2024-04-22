@@ -26,20 +26,7 @@ void AGMC_WorldTimeReplicator::BeginPlay()
   gmc_ck(bAlwaysRelevant)
   gmc_ck(NetUpdateFrequency == 0.f)
 
-  if (const auto& World = GetWorld())
-  {
-    if (World->IsGameWorld())
-    {
-      World->GetTimerManager().SetTimer(
-        SV_TimerHandleUpdateTime,
-        this,
-        &AGMC_WorldTimeReplicator::SV_UpdateRealWorldTimeSecondsReplicated,
-        WorldTimeUpdateInterval,
-        true,
-        0.f
-      );
-    }
-  }
+  SV_StartUpdateTimer(WorldTimeUpdateInterval);
 }
 
 void AGMC_WorldTimeReplicator::EndPlay(EEndPlayReason::Type EndPlayReason)
@@ -55,6 +42,51 @@ void AGMC_WorldTimeReplicator::EndPlay(EEndPlayReason::Type EndPlayReason)
 double AGMC_WorldTimeReplicator::GetRealWorldTimeSecondsReplicated() const
 {
   return RealWorldTimeSecondsReplicated;
+}
+
+void AGMC_WorldTimeReplicator::SV_StartUpdateTimer(float UpdateInterval)
+{
+  if (GetLocalRole() != ROLE_Authority)
+  {
+    return;
+  }
+
+  const auto& World = GetWorld();
+  if (!World)
+  {
+    return;
+  }
+
+  World->GetTimerManager().SetTimer(
+    SV_TimerHandleUpdateTime,
+    this,
+    &AGMC_WorldTimeReplicator::SV_UpdateRealWorldTimeSecondsReplicated,
+    UpdateInterval,
+    true,
+    0.f
+  );
+}
+
+void AGMC_WorldTimeReplicator::SV_StopUpdateTimer()
+{
+  if (GetLocalRole() != ROLE_Authority)
+  {
+    return;
+  }
+
+  const auto& World = GetWorld();
+  if (!World)
+  {
+    return;
+  }
+
+  World->GetTimerManager().ClearTimer(SV_TimerHandleUpdateTime);
+}
+
+void AGMC_WorldTimeReplicator::SV_ResetUpdateTimer(float UpdateInterval)
+{
+  SV_StopUpdateTimer();
+  SV_StartUpdateTimer(UpdateInterval);
 }
 
 void AGMC_WorldTimeReplicator::CL_OnRepRealWorldTimeSecondsReplicated()

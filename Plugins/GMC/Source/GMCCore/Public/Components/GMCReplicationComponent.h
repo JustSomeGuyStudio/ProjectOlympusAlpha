@@ -7,6 +7,7 @@
 #include "FloatPrecision.h"
 #include "CircularContainer.h"
 #include "SyncInterface.h"
+#include "GMCPlayerController.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "GMCReplicationComponent.generated.h"
 
@@ -54,58 +55,6 @@ template<>
 struct TStructOpsTypeTraits<FGMC_Move> : public TStructOpsTypeTraitsBase2<FGMC_Move>
 {
   enum { WithNetSerializer = true };
-};
-
-USTRUCT(BlueprintType)
-struct FGMC_SmoothCorrection
-{
-  GENERATED_BODY()
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // Whether smoothed client corrections should be used.
-  bool bEnable{true};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0.01", UIMin = "0.1", UIMax = "0.5"))
-  // The time to interpolate over during a correction.
-  float InterpolationTime{0.2f};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // Whether to smooth a correction of the actor location.
-  bool bSmoothActorLocation{true};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // Whether to smooth a correction of the actor rotation.
-  bool bSmoothActorRotation{true};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // Whether to smooth a correction of the actor scale.
-  bool bSmoothActorScale{true};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // Whether to smooth a correction of the control rotation.
-  bool bSmoothControlRotation{true};
-};
-
-USTRUCT(BlueprintType)
-struct FGMC_SimulationThrottle
-{
-  GENERATED_BODY()
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
-  // Whether simulation throttling should be used.
-  bool bEnable{false};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1000", UIMax = "10000"))
-  // The distance from the local player up to which simulated pawns will still be smoothed every frame.
-  double MaxSmoothingDistance{5000.};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1000", UIMax = "10000"))
-  // The distance over which simulation frequency will drop exponentially once the max smoothing distance has been exceeded.
-  double SmoothingFallOffDistance{5000.};
-
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "1", UIMin = "5", UIMax = "100"))
-  // How many frames should be skipped at most between simulations.
-  int32 MaxSkippedSmoothingFrames{30};
 };
 
 /// Synchronises the transform, velocity and any user-defined data for server and client pawns across the network.
@@ -364,32 +313,32 @@ protected:
   /// @param        APMove    The saved AP move.
   /// @returns      void
   UFUNCTION(BlueprintNativeEvent, BlueprintAuthorityOnly, Category = "General Movement Component")
-  void SV_OnAPMoveSaved(FGMC_Move& APMove);
-  virtual void SV_OnAPMoveSaved_Implementation(FGMC_Move& APMove) {}
+  void SV_OnAPMoveSaved(UPARAM(Ref) FGMC_Move& APMove);
+  virtual void SV_OnAPMoveSaved_Implementation(UPARAM(Ref) FGMC_Move& APMove) {}
 
   /// Called when the SP move was saved on the server.
   ///
   /// @param        SPMove    The saved SP move.
   /// @returns      void
   UFUNCTION(BlueprintNativeEvent, BlueprintAuthorityOnly, Category = "General Movement Component")
-  void SV_OnSPMoveSaved(FGMC_Move& SPMove);
-  virtual void SV_OnSPMoveSaved_Implementation(FGMC_Move& SPMove) {}
+  void SV_OnSPMoveSaved(UPARAM(Ref) FGMC_Move& SPMove);
+  virtual void SV_OnSPMoveSaved_Implementation(UPARAM(Ref) FGMC_Move& SPMove) {}
 
   /// Called whenever a new AP move was received.
   ///
   /// @param        Move    The received AP move.
   /// @returns      void
-  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component")
-  void CL_OnAPMoveReceived(FGMC_Move& APMove);
-  virtual void CL_OnAPMoveReceived_Implementation(FGMC_Move& APMove) {}
+  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component", DisplayName = "CL On AP Move Received")
+  void CL_OnAPMoveReceived(UPARAM(Ref) FGMC_Move& APMove);
+  virtual void CL_OnAPMoveReceived_Implementation(UPARAM(Ref) FGMC_Move& APMove) {}
 
   /// Called whenever a new SP move was received.
   ///
   /// @param        Move    The received SP move.
   /// @returns      void
-  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component")
-  void CL_OnSPMoveReceived(FGMC_Move& SPMove);
-  virtual void CL_OnSPMoveReceived_Implementation(FGMC_Move& SPMove) {}
+  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component", DisplayName = "CL On SP Move Received")
+  void CL_OnSPMoveReceived(UPARAM(Ref) FGMC_Move& SPMove);
+  virtual void CL_OnSPMoveReceived_Implementation(UPARAM(Ref) FGMC_Move& SPMove) {}
 
   /// Overridable function that gets called before a move is executed during a client replay.
   ///
@@ -447,7 +396,7 @@ protected:
   /// Called after a smoothed client correction has finished.
   ///
   /// @returns      void
-  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component")
+  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component", DisplayName = "CL On Smooth Correction Completed")
   void CL_OnSmoothCorrectionCompleted();
   virtual void CL_OnSmoothCorrectionCompleted_Implementation() {}
 
@@ -487,11 +436,12 @@ protected:
   ///
   /// @param        TargetIndex       The smoothing target index in the move history.
   /// @param        bExtrapolating    Whether we are going to extrapolate.
+  /// @param        bRollback         Whether we are currently in the context of a rollback.
   /// @param        InterpStates      The type of interpolation states that are going to be used.
   /// @returns      void
   UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component")
-  void PreSmoothing(int32 TargetIndex, bool bExtrapolating, EGMC_InterpolationStates InterpStates);
-  virtual void PreSmoothing_Implementation(int32 TargetIndex, bool bExtrapolating, EGMC_InterpolationStates InterpStates) {}
+  void PreSmoothing(int32 TargetIndex, bool bExtrapolating, bool bRollback, EGMC_InterpolationStates InterpStates);
+  virtual void PreSmoothing_Implementation(int32 TargetIndex, bool bExtrapolating, bool bRollback, EGMC_InterpolationStates InterpStates) {}
 
   /// Called each time the pawn was set to a different state internally. If you have bound variables that have gameplay-critical side effects when their value
   /// changes you should put the logic for that here.
@@ -584,6 +534,20 @@ protected:
   void OnClientPredictionDisabled();
   virtual void OnClientPredictionDisabled_Implementation() {}
 
+  /// Called on client and server when unreliable client move transmission is toggled on.
+  ///
+  /// @returns      void
+  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component", DisplayName = "CL On Unreliable Client Moves Activated")
+  void OnUnreliableClientMovesActivated();
+  virtual void OnUnreliableClientMovesActivated_Implementation() {}
+
+  /// Called on client and server when unreliable client move transmission is toggled off.
+  ///
+  /// @returns      void
+  UFUNCTION(BlueprintNativeEvent, Category = "General Movement Component", DisplayName = "CL On Unreliable Client Moves Deactivated")
+  void OnUnreliableClientMovesDeactivated();
+  virtual void OnUnreliableClientMovesDeactivated_Implementation() {}
+
   /// Called when the GMC is enabled after being disabled.
   ///
   /// @returns      void
@@ -603,7 +567,7 @@ protected:
 
 public:
 
-  /// Gets the current server world time. When called on a client, this is the synced time with the network delay already accounted for.
+  /// Returns the current server world time. When called on a client, this is the synced time with the network delay already accounted for.
   ///
   /// @returns      double    The time in seconds since the server world was brought up for play.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
@@ -791,6 +755,13 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   double CL_GetTimeSinceLastMoveBatchWasSent() const;
 
+  /// Returns the average time discrepancy of the client that was calculated during the last time sync. If the value is greater/smaller than 0 the client is
+  /// estimated to be behind/ahead.
+  ///
+  /// @returns      double    The estimated signed average time discrepancy of the client (in seconds). Always returns 0 on the server.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual double CL_GetTimeDiscrepancy() const;
+
   /// Returns a move from the pawn's move history based on the passed timestamp. If no move with the exact passed timestamp exists, the move with the closest
   /// matching timestamp will be returned.
   ///
@@ -836,7 +807,7 @@ public:
   /// 3) The passed connection must not be the owner of the passed pawn (i.e. the autonomous proxy connection for that pawn).
   /// 4) The passed pawn needs to have a replication component as well.
   /// 5) Uses the server-side smoothing settings of the passed pawn for interpolation (which must be the same settings the client uses).
-  /// 6) The interpolation mode must be delay based.
+  /// 6) Delay-based interpolation yields the best results, other smoothing modes are potentially a lot less accurate.
   /// 7) Only values that are replicated by default (location, rotation, etc.) and bound variables will be rewound.
   /// 8) Always call SV_RestorePawnAfterRewind when you are done with your logic to set the pawn back to its original state.
   /// 9) Only call this function on pawns that are not already rolled back.
@@ -952,6 +923,91 @@ public:
   /// @returns      bool    True if the pawn is currently performing a recovery, false otherwise.
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   bool IsPerformingExtrapolationRecovery() const;
+
+  /// Sets a component to smooth after simulation. Pass nullptr to reset the smoothing parameters.
+  ///
+  /// @param        Component    The component to smooth. Must have the same outer actor as the replication component.
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void SetComponentToSmooth(USceneComponent* Component);
+
+  /// Returns the component that is being smoothed after simulation.
+  ///
+  /// @returns      USceneComponent*    The component to smooth.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  USceneComponent* GetComponentToSmooth() const;
+
+  /// Returns the saved base offset of the component that is being smoothed after simulation.
+  ///
+  /// @returns      FTransform    The offset of the component to smooth. Returns an identity transform if none is set.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  FTransform GetComponentToSmoothOffset() const;
+
+  /// Sets the base offset transform of the smoothed component in addition to applying the transform. The offset will only be set if the passed component is the
+  /// component that is being smoothed and the owner is a simulated pawn, but the transform will be applied for any valid component passed.
+  ///
+  /// @param        ComponentWorldTransform    The component for which the transform should be set.
+  /// @param        bSweep                     Whether to sweep the component.
+  /// @param        OutSweepHitResult          The hit result of the sweep.
+  /// @param        bTeleportPhysics           Whether the physics state should be teleported.
+  /// @param        SmoothComponent            The component that is being smoothed.
+  /// @param        SmoothOffset               The new offset of the smoothed component (relative to the owning actor's root component).
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void SetComponentWorldTransformWithSmoothOffset(
+    const FTransform& ComponentWorldTransform,
+    bool bSweep,
+    FHitResult& OutSweepHitResult,
+    bool bTeleportPhysics,
+    USceneComponent* SmoothComponent,
+    const FTransform& SmoothOffset
+  );
+
+  /// Sets the base location offset of the smoothed component in addition to applying the location. The offset will only be set if the passed component is the
+  /// component that is being smoothed and the owner is a simulated pawn, but the location will be applied for any valid component passed.
+  ///
+  /// @param        ComponentWorldLocation    The component for which the location should be set.
+  /// @param        bSweep                    Whether to sweep the component.
+  /// @param        OutSweepHitResult         The hit result of the sweep.
+  /// @param        bTeleportPhysics          Whether the physics state should be teleported.
+  /// @param        SmoothComponent           The component that is being smoothed.
+  /// @param        SmoothOffset              The new offset of the smoothed component (relative to the owning actor's root component).
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void SetComponentWorldLocationWithSmoothOffset(
+    const FVector& ComponentWorldLocation,
+    bool bSweep,
+    FHitResult& OutSweepHitResult,
+    bool bTeleportPhysics,
+    USceneComponent* SmoothComponent,
+    const FVector& SmoothOffset
+  );
+
+  /// Sets the base rotation offset of the smoothed component in addition to applying the rotation. The offset will only be set if the passed component is the
+  /// component that is being smoothed and the owner is a simulated pawn, but the rotation will be applied for any valid component passed.
+  ///
+  /// @param        ComponentWorldRotation    The component for which the rotation should be set.
+  /// @param        bTeleportPhysics          Whether the physics state should be teleported.
+  /// @param        SmoothComponent           The component that is being smoothed.
+  /// @param        SmoothOffset              The new offset of the smoothed component (relative to the owning actor's root component).
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void SetComponentWorldRotationWithSmoothOffset(
+    const FRotator& ComponentWorldRotation,
+    bool bTeleportPhysics,
+    USceneComponent* SmoothComponent,
+    const FRotator& SmoothOffset
+  );
+
+  /// Sets the base scale offset of the smoothed component in addition to applying the scale. The offset will only be set if the passed component is the
+  /// component that is being smoothed and the owner is a simulated pawn, but the scale will be applied for any valid component passed.
+  ///
+  /// @param        ComponentWorldScale    The component for which the scale should be set.
+  /// @param        SmoothComponent        The component that is being smoothed.
+  /// @param        SmoothOffset           The new offset of the smoothed component (relative to the owning actor's root component).
+  /// @returns      void
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  void SetComponentWorldScaleWithSmoothOffset(const FVector& ComponentWorldScale, USceneComponent* SmoothComponent, const FVector& SmoothOffset);
 
   /// Calling this function will force the next client move to be enqueued as a new entry in the move history. Only relevant for autonomous proxies, this
   /// function does nothing for any other kind of pawn.
@@ -1449,6 +1505,12 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   void EnableClientPrediction(bool bEnable);
 
+  /// Whether we are currently using unreliable RPCs to transmit client moves to the server. This flag is synced across client and server.
+  ///
+  /// @returns      bool    True if client moves are sent to the server via unreliable RPCs, false otherwise.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  bool IsUsingUnreliableClientMoves() const;
+
   /// Whether the GMC system is currently enabled.
   ///
   /// @returns      bool    True if the system is currently enabled, false otherwise.
@@ -1508,12 +1570,13 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   FVector GetAngularVelocity_GMC() const;
 
-  /// Sets the pawn's world location. Teleports physics and does not sweep.
+  /// Sets the pawn's world location.
   ///
-  /// @param        Location    The location value to set.
+  /// @param        Location            The location value to set.
+  /// @param        bTeleportPhysics    Whether to teleport the physics state.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SetActorLocation_GMC(const FVector& Location);
+  void SetActorLocation_GMC(const FVector& Location, bool bTeleportPhysics);
 
   /// Returns the pawn's world location.
   ///
@@ -1521,12 +1584,13 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   FVector GetActorLocation_GMC() const;
 
-  /// Sets the pawn's world rotation. Teleports physics and does not sweep.
+  /// Sets the pawn's world rotation.
   ///
-  /// @param        Rotation    The rotation value to set.
+  /// @param        Rotation            The rotation value to set.
+  /// @param        bTeleportPhysics    Whether to teleport the physics state.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SetActorRotation_GMC(const FRotator& Rotation);
+  void SetActorRotation_GMC(const FRotator& Rotation, bool bTeleportPhysics);
 
   /// Returns the pawn's world rotation.
   ///
@@ -1534,12 +1598,13 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   FRotator GetActorRotation_GMC() const;
 
-  /// Sets the pawn's world rotation. Teleports physics and does not sweep.
+  /// Sets the pawn's world rotation.
   ///
-  /// @param        Quat    The rotation value to set.
+  /// @param        Quat                The rotation value to set.
+  /// @param        bTeleportPhysics    Whether to teleport the physics state.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SetActorQuat_GMC(const FQuat& Quat);
+  void SetActorQuat_GMC(const FQuat& Quat, bool bTeleportPhysics);
 
   /// Returns the pawn's world rotation.
   ///
@@ -1547,21 +1612,23 @@ public:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   FQuat GetActorQuat_GMC() const;
 
-  /// Sets the pawn's world location and rotation. Teleports physics and does not sweep.
+  /// Sets the pawn's world location and rotation.
   ///
-  /// @param        Location    The location value to set.
-  /// @param        Rotation    The rotation value to set.
+  /// @param        Location            The location value to set.
+  /// @param        Rotation            The rotation value to set.
+  /// @param        bTeleportPhysics    Whether to teleport the physics state.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SetActorLocationAndRotation_GMC(const FVector& Location, const FRotator& Rotation);
+  void SetActorLocationAndRotation_GMC(const FVector& Location, const FRotator& Rotation, bool bTeleportPhysics);
 
-  /// Sets the pawn's world location and rotation. Teleports physics and does not sweep.
+  /// Sets the pawn's world location and rotation.
   ///
-  /// @param        Location    The location value to set.
-  /// @param        Rotation    The rotation value to set.
+  /// @param        Location            The location value to set.
+  /// @param        Rotation            The rotation value to set.
+  /// @param        bTeleportPhysics    Whether to teleport the physics state.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SetActorLocationAndQuat_GMC(const FVector& Location, const FQuat& Rotation);
+  void SetActorLocationAndQuat_GMC(const FVector& Location, const FQuat& Rotation, bool bTeleportPhysics);
 
   /// Sets the pawn's world scale.
   ///
@@ -1578,10 +1645,11 @@ public:
 
   /// Sets the pawn's world transform.
   ///
-  /// @param        Transform    The transform to set.
+  /// @param        Transform           The transform to set.
+  /// @param        bTeleportPhysics    Whether to teleport the physics state.
   /// @returns      void
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
-  void SetActorTransform_GMC(const FTransform& Transform);
+  void SetActorTransform_GMC(const FTransform& Transform, bool bTeleportPhysics);
 
   /// Returns the pawn's world transform.
   ///
@@ -1674,8 +1742,17 @@ public:
   /// How many reliable RPCs should be reserved for the owning actor at the least when attempting to send client moves to the server.
   static constexpr int32 SEND_CLIENT_MOVES_OVERFLOW_PROTECTION = 30;
 
+  /// The client move send rate to assume for calculations when unreliable RPCs are used (should also consider CLIENT_MAX_MOVE_COMBINE_DELTA_TIME_UNRELIABLE).
+  static constexpr int32 STAND_IN_CLIENT_SEND_RATE_UNRELIABLE = 50;
+
+  /// The max move combine delta time to when unreliable RPCs are used.
+  static constexpr float CLIENT_MAX_MOVE_COMBINE_DELTA_TIME_UNRELIABLE = 0.025f;
+
   /// How large the buffer for moves created by non-predicted autonomous proxies should be.
   static constexpr int32 NUM_SAVED_NO_PREDICTION_MOVES = 3;
+
+  /// Absolute clamp value for the client time discrepancy during simulation.
+  static constexpr double CLIENT_TIME_DISCREPANCY_CLAMP_ABS = 0.05;
 
   /// Contains past moves that this pawn has executed. New moves are enqueued at the end (i.e. the most recent move has the highest index).
   TGMC_CircularArray<FGMC_Move> MoveHistory{};
@@ -1697,10 +1774,11 @@ public:
 
   /// Checks if the buffer for reliable RPCs of the passed actor is about to overflow.
   ///
-  /// @param        Owner               The actor to check.
-  /// @param        ProtectionMargin    How much capacity should still be allowed within the buffer before it is considered to be about to overflow.
-  /// @returns      bool                True if there's still more capacity in the buffer than the protection margin specified, false otherwise.
-  static bool CheckReliableBuffer(AActor* Owner, int32 ProtectionMargin);
+  /// @param        Owner                   The actor to check.
+  /// @param        ProtectionMargin        How much capacity should still be allowed within the buffer before it is considered to be about to overflow.
+  /// @param        OutNumPendingPackets    The current number of pending reliable packets waiting to be acknowledged.
+  /// @returns      bool                    True if there's still more capacity in the buffer than the protection margin specified, false otherwise.
+  static bool CheckReliableBuffer(AActor* Owner, int32 ProtectionMargin, int32& OutNumPendingPackets);
 
   /// Returns all data associated with any sync tags for non-default initialization of sync types.
   ///
@@ -1762,6 +1840,18 @@ protected:
   UFUNCTION(BlueprintCallable, Category = "General Movement Component")
   float CalculateSubDeltaTime(int32 Iterations, float RemainingTime, float InMaxTimeStep, int32 InMaxIterations) const;
 
+  /// Returns the current move send rate of the client. This value is not automatically synced across client and server.
+  ///
+  /// @returns      float    The client move send rate.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual float GetClientSendRate() const;
+
+  /// Returns the current max combined delta time for a client move. This value is not automatically synced across client and server.
+  ///
+  /// @returns      float    The max combined move delta time.
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  virtual float GetMaxCombinedDeltaTime() const;
+
   /// Clears most transient data on the component. Do not call from within prediction or simulation logic.
   ///
   /// @param        bResetMoves    Whether the pawn moves should also be reset.
@@ -1801,6 +1891,17 @@ protected:
 
     bool bIsExecutingSimulatedMove{false};
 
+    bool bUseUnreliableClientMoves{false};
+
+    bool CL_bJustDeactivatedUnreliableClientMoves{false};
+
+    double CL_UseUnreliableClientMovesActivationTime{0.};
+
+    static constexpr double USE_UNRELIABLE_CLIENT_MOVES_TIMEOUT = 30.;
+    static constexpr double UNRELIABLE_CLIENT_MOVES_SPAWN_TOLERANCE = 3.;
+
+    void CL_SetUseUnreliableClientMoves(int32 NumPendingReliablePackets, UGMC_ReplicationCmp* const Outer);
+
     void SaveFrameInfo(bool bDidUpdate, const UGMC_ReplicationCmp* const Outer);
 
     bool ShouldClearTransientData(const UGMC_ReplicationCmp* const Outer) const;
@@ -1825,7 +1926,9 @@ private:
     bool bCombined
   );
 
-  bool AddToSimulationHistory(const FGMC_Move& Move);
+  bool ShouldAddToSimulationHistory(double MoveTimestamp) const;
+
+  void AddToSimulationHistory(const FGMC_Move& Move);
 
 ///=============================================================================================================================================================
 /// Server
@@ -1906,6 +2009,8 @@ private:
 
     double LastReceivedClientTimestamp{0.};
 
+    double LastAcceptedClientTimestamp{0.};
+
     double LastRemotePawnUpdateTime{0.};
 
     bool bLastClientMoveWasValid{false};
@@ -1920,6 +2025,7 @@ private:
       PendingMoves.Reset();
       LastRawMove = FGMC_Move{};
       LastReceivedClientTimestamp = 0.;
+      LastAcceptedClientTimestamp = 0.;
       LastRemotePawnUpdateTime = 0.;
       bLastClientMoveWasValid = false;
       bIsExecutingRemoteMoves = false;
@@ -1931,6 +2037,10 @@ private:
 
   void SV_PreReplication();
 
+  void SV_ReceiveClientSendStatus_Implementation(bool bIsUsingUnreliableMoves);
+
+  bool SV_ReceiveClientSendStatus_Validate(bool bIsUsingUnreliableMoves);
+
   void SV_ReceiveMoves_Implementation();
 
   bool SV_ReceiveMoves_Validate();
@@ -1940,6 +2050,8 @@ private:
   void SV_ApplyValidatedState(FGMC_PawnState& State, bool bInAssumeClientState, bool& bInOutValidState, bool bUseRelative, EGMC_NetContext Context);
 
   void SV_ExecuteClientMoves(TArray<FGMC_Move>& ClientMoves, bool bIsProxyMove = false);
+
+  bool SV_CheckForcedNetUpdate(const FGMC_Move& Move);
 
   FGMC_Move SV_CreateProxyMove(double Timestamp, float DeltaTime);
 
@@ -2359,6 +2471,15 @@ private:
 
   void SaveLocalStateBeforeRollback(const APawn* PawnToSave, bool bUseRelative) const;
 
+  void RollBackPawns(double Time, const TArray<AGMC_Pawn*>& PawnsToRollBack, EGMC_NetContext Context) const;
+
+  double ComputeRollbackSimulationTime(
+    double Time,
+    APlayerController* const Connection,
+    AGMC_Pawn* const OtherPawn,
+    UGMC_ReplicationCmp* const OtherReplicationComponent
+  ) const;
+
   bool ComputeRollbackParams(
     APlayerController* Connection,
     double Time,
@@ -2368,7 +2489,15 @@ private:
     float& OutAlpha
   ) const;
 
-  void RollBackPawns(double Time, const TArray<AGMC_Pawn*>& PawnsToRollBack, EGMC_NetContext Context) const;
+  void SetRollbackState(
+    double Time,
+    double SimulationTime,
+    int32 StartIdx,
+    int32 TargetIdx,
+    float Alpha,
+    UGMC_ReplicationCmp* const OtherReplicationComponent,
+    EGMC_NetContext Context
+  ) const;
 
   void RestoreRolledBackPawns(const TArray<AGMC_Pawn*>& PawnsToRestore, EGMC_NetContext Context) const;
 
@@ -2752,6 +2881,14 @@ protected:
     return FGMC_PhysicsInterpState{};
   }
 
+  virtual void SmoothComponent(
+    double Time,
+    float DeltaTime,
+    FTransform StartTransform,
+    FTransform TargetTransform,
+    FGMC_SmoothComponentParams& InOutSmoothComponentParams
+  );
+
 private:
 
   EGMC_PhysicsInterpolationMode PhysicsInterpolationMode{EGMC_PhysicsInterpolationMode::AdaptiveDelay};
@@ -2950,6 +3087,7 @@ private:
 
   void SmoothNone(
     int32 LastIdx,
+    bool bRollback,
     EGMC_InterpolationStates InterpStates,
     bool bSkipBoneUpdate,
     EGMC_NetContext Context
@@ -2960,6 +3098,7 @@ private:
     int32 PrevIdx,
     float Alpha,
     bool bInterpolating,
+    bool bRollback,
     float TeleportThreshold,
     EGMC_InterpolationStates InterpStates,
     bool bSkipBoneUpdate,
@@ -2987,6 +3126,7 @@ private:
     float InMaxTimeStep,
     int32 InMaxIterations,
     bool bInterpolating,
+    bool bRollback,
     EGMC_InterpolationStates SimStates,
     bool bSkipBoneUpdate,
     EGMC_NetContext Context
@@ -3100,6 +3240,10 @@ public:
   bool bDetermineSkippedSmoothingStates{false};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Smoothing")
+  /// The settings for post-process smoothing of a set component after simulation.
+  FGMC_SmoothComponentParams PostSmoothingParams{};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Smoothing")
   /// The settings for distance-based simulation throttling.
   FGMC_SimulationThrottle SimulationThrottle{};
 
@@ -3124,18 +3268,23 @@ public:
   /// should generally be disabled except for testing purposes.
   bool bNoMoveCombining{false};
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client", meta = (ClampMin = "0", UIMin = "1", UIMax = "60"))
-  /// How often per second the client will send data to the server. This is an upper bound i.e. the interval between two updates will never be lower than
-  /// 1 / client send rate. However, more often than not it will be longer to save bandwidth if no important values changed on the client (moves will be
-  /// combined). In this case the lower bound is determined by the max combined delta time.
-  int32 ClientSendRate{30};
-
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client", meta = (ClampMin = "0.000001", UIMin = "0.01", UIMax = "0.2"))
   /// The maximum delta time allowed for a combined client move before a new move has to be enqueued. In some situations you may want to enqueue moves more
   /// frequently so the server gets updates faster (the client send rate is still limited by how quickly we enqueue new moves). As this will not clamp the delta
   /// time of a client move, it can be set to small values without affecting the movement simulation (unlike the max move delta time). E.g. if you set this to
   /// 0.02 you will enqueue every move up to 50 fps. Cannot be greater than the max move delta time (will be lowered to match the max move delta time if it is).
   float MaxCombinedDeltaTime{0.03334f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client", meta = (ClampMin = "0", UIMin = "1", UIMax = "60"))
+  /// How often per second the client will send data to the server. This is an upper bound i.e. the interval between two updates will never be lower than
+  /// 1 / client send rate. However, more often than not it will be longer to save bandwidth if no important values changed on the client (moves will be
+  /// combined). In this case the lower bound is determined by the max combined delta time.
+  int32 ClientSendRate{30};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client", meta = (ClampMin = "-1", UIMin = "5", UIMax = "50"))
+  /// If there are more reliable RPC packets than the set threshold waiting to be acknowledged by the server, we will switch to unreliable transmission for
+  /// sending client moves to the server until the network congestion subsides. Set to -1 to always use unreliable RPCs.
+  int32 UseUnreliableClientMovesThreshold{30};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Networking|Client")
   /// If true, any client-auth default sync types will be restored to the values they had before the correction after a replay.
@@ -3652,6 +3801,26 @@ public:
     return BindingIndex;
   }
 
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component",
+    meta = (ToolTip = "Bind an instanced struct."))
+  UPARAM(DisplayName = "Binding Index") int32 BindInstancedStruct(
+    UPARAM(Ref) FInstancedStruct& VariableToBind,
+    EGMC_PredictionMode PredictionMode,
+    EGMC_CombineMode CombineMode,
+    EGMC_SimulationMode SimulationMode,
+    EGMC_InterpolationFunction Interpolation
+  )
+  {
+    int32 BindingIndex = -1;
+    AliasData.InstancedStruct.BindMember(
+      VariableToBind,
+      TranslateToSyncSettings(PredictionMode, CombineMode, SimulationMode, Interpolation),
+      BindingIndex
+    );
+    gmc_ck(BindingIndex >= 0)
+    return BindingIndex;
+  }
+
   ///***********************************************************************************************************************************************************
   /// Getters for bound data from a pawn state via the binding index.
   ///
@@ -3766,6 +3935,12 @@ public:
   FGameplayTagContainer GetBoundGameplayTagContainer(int32 Index, const FGMC_PawnState& State) const
   {
     return State.GameplayTagContainer.Read(Index);
+  }
+
+  UFUNCTION(BlueprintCallable, Category = "General Movement Component")
+  FInstancedStruct GetBoundInstancedStruct(int32 Index, const FGMC_PawnState& State) const
+  {
+    return State.InstancedStruct.Read(Index);
   }
 
   ///***********************************************************************************************************************************************************
@@ -3885,6 +4060,12 @@ public:
     State.GameplayTagContainer.Write(Value, Index);
   }
 
+  UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "General Movement Component")
+  void SetBoundInstancedStruct(FInstancedStruct const& Value, int32 Index, UPARAM(Ref) FGMC_PawnState& State) const
+  {
+    State.InstancedStruct.Write(Value, Index);
+  }
+
   ///***********************************************************************************************************************************************************
   /// Suspending a variable stops replication of the value to the target machine.
   ///
@@ -3996,5 +4177,11 @@ public:
   void SetBoundGameplayTagContainerSuspended(bool bSuspend, int32 Index, UPARAM(Ref) FGMC_PawnState& State) const
   {
     State.GameplayTagContainer.SetSuspended(bSuspend, Index);
+  }
+
+  UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "General Movement Component")
+  void SetBoundInstancedStructSuspended(bool bSuspend, int32 Index, UPARAM(Ref) FGMC_PawnState& State) const
+  {
+    State.InstancedStruct.SetSuspended(bSuspend, Index);
   }
 };

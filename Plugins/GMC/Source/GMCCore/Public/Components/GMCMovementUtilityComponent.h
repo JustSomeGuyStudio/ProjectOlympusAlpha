@@ -2198,6 +2198,7 @@ public:
   /// @param        bClientReplay        Whether to return true during client replays of the autonomous proxy (implies that prediction is enabled).
   /// @param        bSimulationInterp    Whether to return true during smoothing when interpolating.
   /// @param        bSimulationExtrap    Whether to return true during smoothing when extrapolating.
+  /// @param        OtherComponent       The overlapping component. Only overlaps of the pawn's root component will be filtered.
   /// @param        Aux                  Helper struct required to ensure correct behaviour (do not modify). The same struct must be passed for the begin and
   ///                                    end overlap events.
   /// @param        Type                 The type of overlap that is being filtered.
@@ -2209,6 +2210,7 @@ public:
     bool bClientReplay,
     bool bSimulationInterp,
     bool bSimulationExtrap,
+    const UPrimitiveComponent* OtherComponent,
     UPARAM(Ref) FGMC_FilterOverlapAux& Aux,
     EGMC_OverlapType Type
   );

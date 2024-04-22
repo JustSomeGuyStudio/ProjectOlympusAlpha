@@ -207,6 +207,12 @@ double AGMC_PlayerController::CL_GetSyncedWorldTimeSeconds() const
   return CL_WorldTimeAux.SyncedWorldTime;
 }
 
+double AGMC_PlayerController::CL_GetAverageTimeDiscrepancy() const
+{
+  gmc_ck(GetLocalRole() < ROLE_Authority)
+  return CL_WorldTimeAux.AvgSignedTimeDiscrepancy;
+}
+
 float AGMC_PlayerController::GetPingInMilliseconds() const
 {
   if (!PlayerState)
@@ -582,7 +588,7 @@ void AGMC_PlayerController::FClientWorldTimeAux::SyncWithServerTime(double LastR
   else
   {
     TimeDiscrepancyBuffer.Add(SignedTimeDiscrepancy);
-    const double AvgSignedTimeDiscrepancy = TimeDiscrepancyBuffer.GetMean();
+    AvgSignedTimeDiscrepancy = TimeDiscrepancyBuffer.GetMean();
     const double AvgTimeDiscrepancy = FMath::Abs(AvgSignedTimeDiscrepancy);
 
     GMC_LOG(
@@ -649,7 +655,7 @@ void AGMC_PlayerController::FServerAdaptiveDelayAux::SendAdaptiveDelayParams(AGM
 
   if (AdaptiveDelayPackets.Num() > 0)
   {
-    if (UGMC_ReplicationCmp::CheckReliableBuffer(Outer, SEND_ADAPTIVE_DELAY_OVERFLOW_PROTECTION))
+    if (UGMC_ReplicationCmp::CheckReliableBuffer(Outer, SEND_ADAPTIVE_DELAY_OVERFLOW_PROTECTION, UNUSED(int32)))
     {
       Outer->CL_SendAdaptiveDelayParams(AdaptiveDelayPackets);
     }

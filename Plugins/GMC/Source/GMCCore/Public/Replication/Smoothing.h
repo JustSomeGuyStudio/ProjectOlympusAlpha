@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "SyncMeta.h"
 #include "FloatPrecision.h"
+#include "Engine/EngineTypes.h"
 #include "Containers/StaticArray.h"
 #include "Smoothing.generated.h"
 
@@ -89,17 +90,21 @@ struct FGMC_MatchLatestPersistentParams
 {
   GENERATED_BODY()
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0.5", UIMax = "1"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0.1", UIMax = "0.2"))
   /// The max time delta over which the smoothing algorithm is allowed to interpolate between two server state updates.
-  float MaxDeltaTime{0.5f};
+  float MaxDeltaTime{0.12f};
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0.05", UIMax = "0.5"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0", UIMax = "0.1"))
   /// The min time delta over which the smoothing algorithm must interpolate between two server state updates.
-  float MinDeltaTime{0.1f};
+  float MinDeltaTime{0.025f};
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "1000"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1", UIMax = "10"))
+  /// Scaling factor for the time delta to interpolate over. Will be clamped to the configured min/max values.
+  float DeltaTimeDilation{5.f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "2500"))
   /// The min required distance between the interpolation states to teleport to the target state directly. Set to -1 to disable this functionality.
-  float TeleportThreshold{500.f};
+  float TeleportThreshold{1000.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   /// Whether interpolation should be based on input or output states.
@@ -129,6 +134,7 @@ struct GMCCORE_API FGMC_MatchLatestTransientParams
 {
   float MaxDeltaTime;
   float MinDeltaTime;
+  float DeltaTimeDilation;
   float TeleportThreshold;
   EGMC_InterpolationStates InterpStates;
   double TargetStateTimestamp;
@@ -141,8 +147,6 @@ struct GMCCORE_API FGMC_MatchLatestTransientParams
 
   uint8 bInterpThisUpdate:1;
   uint8 bExtrapThisUpdate:1;
-
-  static constexpr float MAX_TIME_BEHIND_PERCENT = 1.25f;
 
   void Reset()
   {
@@ -158,6 +162,7 @@ struct GMCCORE_API FGMC_MatchLatestTransientParams
   {
     MaxDeltaTime = StaticParams.MaxDeltaTime;
     MinDeltaTime = StaticParams.MinDeltaTime;
+    DeltaTimeDilation = StaticParams.DeltaTimeDilation;
     TeleportThreshold = StaticParams.TeleportThreshold;
     InterpStates = StaticParams.InterpStates;
     TargetStateTimestamp = StaticParams.TargetStateTimestamp;
@@ -191,9 +196,9 @@ struct FGMC_FixedDelayPersistentParams
   /// Whether extrapolation should be allowed when simulating physics.
   bool bAllowPhysicsExtrapolation{false};
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "1000"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "2500"))
   /// The min required distance between the interpolation states to teleport to the target state directly. Set to -1 to disable this functionality.
-  float TeleportThreshold{500.f};
+  float TeleportThreshold{1000.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   /// Whether interpolation should be based on input or output states.
@@ -278,9 +283,9 @@ struct FGMC_AdaptiveDelayPersistentParams
   /// Whether extrapolation should be allowed when simulating physics.
   bool bAllowPhysicsExtrapolation{false};
 
-  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "1000"))
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "2500"))
   /// The min required distance between the interpolation states to teleport to the target state directly. Set to -1 to disable this functionality.
-  float TeleportThreshold{500.f};
+  float TeleportThreshold{1000.f};
 
   UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
   /// Whether interpolation should be based on input or output states.
@@ -648,4 +653,114 @@ struct GMCCORE_API FGMC_CumulativeSimulationTransientParams
   }
 
   void Log(const UGMC_ReplicationCmp* Outer, const FString& PrefixStr = TEXT("")) const;
+};
+
+USTRUCT(BlueprintType)
+struct FGMC_SmoothComponentParams
+{
+  GENERATED_BODY()
+
+  UPROPERTY(BlueprintReadOnly, Category = "General Movement Component", meta = (AllowPrivateAccess = "true"))
+  /// The scene component to smooth. Set through the replication component, not directly.
+  TObjectPtr<USceneComponent> Component{nullptr};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0.05", UIMax = "0.1"))
+  /// The max time delta over which the smoothing algorithm is allowed to interpolate between two transforms.
+  float MaxDeltaTime{0.06f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "0", UIMax = "0.05"))
+  /// The min time delta over which the smoothing algorithm must interpolate between two transforms.
+  float MinDeltaTime{0.01f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1", UIMax = "5"))
+  /// Scaling factor for the time delta to interpolate over. Will be clamped to the configured min/max values.
+  float DeltaTimeDilation{3.f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "-1", UIMin = "-1", UIMax = "2500"))
+  /// The min required distance between two location values to teleport to the target transform directly. Set to -1 to disable this functionality.
+  float TeleportThreshold{1000.f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  /// Whether we should skip updating kinematic bones if the component is a skeletal mesh with a physics state.
+  bool bSkipBoneUpdate{true};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  /// The teleport type to use for the physics state of the component.
+  ETeleportType TeleportPhysics{ETeleportType::None};
+
+  UPROPERTY(BlueprintReadWrite, Category = "General Movement Component")
+  /// The relative offset of the component to the owning actor's root component without any smoothing applied.
+  FTransform ComponentOffset{};
+
+  UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
+  /// The timestamp of the interpolation target transform.
+  double TargetTransformTimestamp{0.};
+
+  UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
+  /// The current simulation time.
+  double SimTime{0.};
+
+  UPROPERTY(BlueprintReadOnly, Category = "General Movement Component")
+  /// The current target delta to move.
+  float TargetDelta{0.f};
+
+  void Reset()
+  {
+    ComponentOffset = FTransform::Identity;
+    TargetTransformTimestamp = 0.;
+    SimTime = 0.;
+    TargetDelta = 0.f;
+  }
+};
+
+USTRUCT(BlueprintType)
+struct FGMC_SmoothCorrection
+{
+  GENERATED_BODY()
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether smoothed client corrections should be used.
+  bool bEnable{true};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0.01", UIMin = "0.1", UIMax = "0.5"))
+  // The time to interpolate over during a correction.
+  float InterpolationTime{0.2f};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether to smooth a correction of the actor location.
+  bool bSmoothActorLocation{true};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether to smooth a correction of the actor rotation.
+  bool bSmoothActorRotation{true};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether to smooth a correction of the actor scale.
+  bool bSmoothActorScale{true};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether to smooth a correction of the control rotation.
+  bool bSmoothControlRotation{true};
+};
+
+USTRUCT(BlueprintType)
+struct FGMC_SimulationThrottle
+{
+  GENERATED_BODY()
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component")
+  // Whether simulation throttling should be used.
+  bool bEnable{false};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1000", UIMax = "10000"))
+  // The distance from the local player up to which simulated pawns will still be smoothed every frame.
+  double MaxSmoothingDistance{5000.};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "0", UIMin = "1000", UIMax = "10000"))
+  // The distance over which simulation frequency will drop exponentially once the max smoothing distance has been exceeded.
+  double SmoothingFallOffDistance{5000.};
+
+  UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "General Movement Component", meta = (ClampMin = "1", UIMin = "5", UIMax = "100"))
+  // How many frames should be skipped at most between simulations.
+  int32 MaxSkippedSmoothingFrames{30};
 };

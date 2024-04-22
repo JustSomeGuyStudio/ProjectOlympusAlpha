@@ -100,8 +100,20 @@ private:
   friend const FGMC_Move& UGMC_ReplicationCmp::SPMove() const;
 
   UFUNCTION(Server, Reliable, WithValidation)
-  void SV_ReceiveMoves(const TArray<FGMC_Move>& RemoteMoves);
-  void SV_ReceiveMoves_Implementation(const TArray<FGMC_Move>& RemoteMoves);
-  bool SV_ReceiveMoves_Validate(const TArray<FGMC_Move>& RemoteMoves);
+  void SV_ReceiveMovesReliable(const TArray<FGMC_Move>& RemoteMoves);
+  void SV_ReceiveMovesReliable_Implementation(const TArray<FGMC_Move>& RemoteMoves);
+  bool SV_ReceiveMovesReliable_Validate(const TArray<FGMC_Move>& RemoteMoves);
+
+  UFUNCTION(Server, Unreliable, WithValidation)
+  void SV_ReceiveMovesUnreliable(const TArray<FGMC_Move>& RemoteMoves);
+  void SV_ReceiveMovesUnreliable_Implementation(const TArray<FGMC_Move>& RemoteMoves);
+  bool SV_ReceiveMovesUnreliable_Validate(const TArray<FGMC_Move>& RemoteMoves);
+
+  UFUNCTION(Server, Reliable, WithValidation)
+  void SV_ReceiveClientSendStatus(bool bIsUsingUnreliableMoves);
+  void SV_ReceiveClientSendStatus_Implementation(bool bIsUsingUnreliableMoves);
+  bool SV_ReceiveClientSendStatus_Validate(bool bIsUsingUnreliableMoves);
+
   friend void UGMC_ReplicationCmp::CL_SendMoves();
+  friend void UGMC_ReplicationCmp::FComponentStatus::CL_SetUseUnreliableClientMoves(int32 NumPendingReliablePackets, UGMC_ReplicationCmp* const Outer);
 };
