@@ -10,7 +10,7 @@
 	"DocsURL": "https://github.com/ErikHedberg/Terminal-Ballistics-Example-Project/wiki",
 	"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/db6020bf42c840a89c24968132f092a4",
 	"SupportURL": "",
-	"EngineVersion": "5.3.0",
+	"EngineVersion": "5.4.0",
 	"CanContainContent": true,
 	"Installed": true,
 	"Modules": [
