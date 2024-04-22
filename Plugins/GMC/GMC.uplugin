@@ -47,10 +47,6 @@
 		{
 			"Name": "OnlineSubsystemSteam",
 			"Enabled": true
-		},
-		{
-			"Name": "GASCompanion",
-			"Enabled": true
 		}
 	]
 }

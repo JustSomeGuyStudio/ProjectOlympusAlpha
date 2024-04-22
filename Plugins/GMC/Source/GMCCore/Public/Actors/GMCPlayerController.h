@@ -5,12 +5,11 @@
 #include "CircularContainer.h"
 #include "Smoothing.h"
 #include "GameFramework/PlayerController.h"
-#include "ModularGameplayActors/GSCModularPlayerController.h"
 #include "GMCPlayerController.generated.h"
 
 /// Player controller class intended to be used with UGMC_MovementReplicationComponent.
 UCLASS(BlueprintType, Blueprintable)
-class GMCCORE_API AGMC_PlayerController : public AGSCModularPlayerController
+class GMCCORE_API AGMC_PlayerController : public APlayerController
 {
   GENERATED_BODY()
 

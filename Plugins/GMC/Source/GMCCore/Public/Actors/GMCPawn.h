@@ -4,12 +4,11 @@
 #include "CoreMinimal.h"
 #include "GMCReplicationComponent.h"
 #include "GameFramework/Pawn.h"
-#include "ModularGameplayActors/GSCModularPawn.h"
 #include "GMCPawn.generated.h"
 
 /// Pawn class intended to be used with UGMC_ReplicationCmp.
 UCLASS(BlueprintType, Blueprintable)
-class GMCCORE_API AGMC_Pawn : public AGSCModularPawn
+class GMCCORE_API AGMC_Pawn : public APawn
 {
   GENERATED_BODY()
 

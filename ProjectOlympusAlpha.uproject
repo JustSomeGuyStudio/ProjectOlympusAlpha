@@ -10,7 +10,6 @@
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 				"NiagaraAnimNotifies",
-				"GASCompanion",
 				"GameplayAbilities",
 				"GameplayTasks",
 				"GameplayTags"
@@ -69,11 +68,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "EventDispatcher",
-			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/5ca8d20450b14699b492d7ecd7df3191"
-		},
-		{
 			"Name": "AscentCombatFramework",
 			"Enabled": false,
 			"MarketplaceURL": "https://www.unrealengine.com/marketplace/en-US/product/19f41df17ac5412c96ac38cbaeb43810"
@@ -89,17 +83,22 @@
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/e820977cf76443e4a298912e3d80ca19"
 		},
 		{
-			"Name": "GASCompanion",
-			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/d83c6f34c3fb4b7092dde195c37c7413"
-		},
-		{
 			"Name": "AnimationWarping",
 			"Enabled": true
 		},
 		{
 			"Name": "AnimationLocomotionLibrary",
 			"Enabled": true
+		},
+		{
+			"Name": "TerminalBallistics",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/db6020bf42c840a89c24968132f092a4"
+		},
+		{
+			"Name": "GASCompanion",
+			"Enabled": false,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/d83c6f34c3fb4b7092dde195c37c7413"
 		}
 	]
 }
