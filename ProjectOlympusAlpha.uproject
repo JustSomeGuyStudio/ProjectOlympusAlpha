@@ -45,7 +45,7 @@
 		},
 		{
 			"Name": "ElectronicNodes",
-			"Enabled": true,
+			"Enabled": false,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/5cb2a394d0c04e73891762be4cbd7216"
 		},
 		{
@@ -76,11 +76,6 @@
 			"Name": "DragonIKPlugin",
 			"Enabled": true,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/content/3f3985e9eb40414aaabf645791fa4916"
-		},
-		{
-			"Name": "AnimationMatchingSuite",
-			"Enabled": true,
-			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/e820977cf76443e4a298912e3d80ca19"
 		},
 		{
 			"Name": "AnimationWarping",
